@@ -22,18 +22,18 @@ async function main() {
   
   // 1. Criar admin user
   console.log('👤 Criando usuário admin...');
-  const hashedPassword = await bcrypt.hash('121416', 10);
+  const hashedPassword = await bcrypt.hash('Expressze@2026', 10);
   await prisma.user.upsert({
     where: { email: 'ze@abacusai.app' },
     update: { password: hashedPassword, role: 'ADMIN' },
     create: {
       email: 'ze@abacusai.app',
-      name: 'Zé Admin',
+      name: 'Bebidas Express Admin',
       password: hashedPassword,
       role: 'ADMIN',
     },
   });
-  console.log('✅ Admin: ze@abacusai.app / 121416');
+  console.log('✅ Admin: ze@abacusai.app / Expressze@2026');
   
   // 2. Criar categorias
   console.log('📁 Criando categorias...');

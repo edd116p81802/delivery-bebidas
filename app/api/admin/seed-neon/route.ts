@@ -23,13 +23,13 @@ export async function GET(request: Request) {
     const data = JSON.parse(fs.readFileSync(dataPath, 'utf-8'));
 
     // 1. Criar admin
-    const hashedPassword = await bcrypt.hash('121416', 10);
+    const hashedPassword = await bcrypt.hash('Expressze@2026', 10);
     await prisma.user.upsert({
       where: { email: 'ze@abacusai.app' },
       update: { password: hashedPassword, role: 'ADMIN' },
       create: {
         email: 'ze@abacusai.app',
-        name: 'Zé Admin',
+        name: 'Bebidas Express Admin',
         password: hashedPassword,
         role: 'ADMIN',
       },
