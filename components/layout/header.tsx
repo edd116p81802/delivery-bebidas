@@ -292,16 +292,9 @@ export function Header() {
         <div className="container mx-auto px-3 md:px-4 py-3">
           <div className="flex items-center justify-between gap-3">
             {/* Logo + Endereço */}
-            <div className="flex items-center gap-2 sm:gap-4">
-              <Link href="/" className="flex items-center gap-1.5 font-black text-white text-base sm:text-xl tracking-tight hover:opacity-90 transition-opacity">
-                <span className="text-amber-400">Bebidas</span>
-                <span>Express</span>
-              </Link>
-              
-              <div className="h-6 w-[1px] bg-gray-700 hidden sm:block" />
-
-              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-amber-400 rounded-full flex items-center justify-center flex-shrink-0">
-                <MapPin className="text-gray-900" size={17} />
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-amber-400 rounded-full flex items-center justify-center flex-shrink-0">
+                <MapPin className="text-gray-900" size={18} />
               </div>
               
               {/* Botão de Endereço com Dropdown */}
