@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -48,7 +48,7 @@ export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
               <Beer className="text-white" size={18} />
             </div>
             <div>
-              <p className="font-bold text-gray-900">ZeExpress</p>
+              <p className="font-bold text-gray-900">Bebidas Express</p>
               <p className="text-xs text-gray-500">Painel Admin</p>
             </div>
             <button
@@ -103,7 +103,7 @@ export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
           <button onClick={() => setSidebarOpen(true)} className="text-gray-500 hover:text-gray-700">
             <Menu size={22} />
           </button>
-          <span className="font-bold text-gray-900">ZeExpress Admin</span>
+          <span className="font-bold text-gray-900">Bebidas Express Admin</span>
         </div>
         <main className="flex-1 p-4 lg:p-6 overflow-auto">
           {children}
@@ -112,3 +112,4 @@ export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+

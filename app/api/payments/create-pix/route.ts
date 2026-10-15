@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma, withRetry } from '@/lib/db';
 import { rateLimit, getClientIP, RATE_LIMITS } from '@/lib/rate-limit';
 
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
     if (!gateway?.privateKey) {
       // Simular PIX quando não há gateway configurado
       console.log('[PIX] No gateway, using simulation');
-      const simulatedQrCode = `00020126580014br.gov.bcb.pix0136${Date.now()}520400005303986540${amount.toFixed(2)}5802BR5925ZEEXPRESS6009SAO PAULO62070503***6304`;
+      const simulatedQrCode = `00020126580014br.gov.bcb.pix0136${Date.now()}520400005303986540${amount.toFixed(2)}5802BR5925Bebidas Express6009SAO PAULO62070503***6304`;
       const transactionId = `SIM_${Date.now()}`;
       const expiresAt = new Date();
       expiresAt.setMinutes(expiresAt.getMinutes() + 10);
@@ -276,3 +276,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+

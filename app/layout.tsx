@@ -13,16 +13,16 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXTAUTH_URL || 'http://localhost:3000'),
-  title: 'Zé Express - Delivery de Bebidas Rápido',
-  description: 'Delivery de bebidas com entrega em até 10-19 minutos. Cervejas, destilados, vinhos e muito mais!',
+  title: 'Bebidas Express - Delivery de Bebidas',
+  description: 'Delivery de bebidas com entrega rápida na sua região. Cervejas, destilados, vinhos e conveniência 24h!',
   icons: {
     icon: '/favicon.svg',
     shortcut: '/favicon.svg',
   },
   openGraph: {
-    title: 'Zé Express - Delivery de Bebidas Rápido',
-    description: 'Delivery de bebidas com entrega em até 10-19 minutos',
-    images: ['/og-image.png'],
+    title: 'Bebidas Express - Delivery de Bebidas',
+    description: 'Delivery de bebidas e conveniência na sua região 24h',
+    images: ['/hero-banner.jpg'],
   },
 };
 

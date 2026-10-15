@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { MapPin } from 'lucide-react';
@@ -54,7 +54,7 @@ export function DeliveryMap({ address }: DeliveryMapProps) {
     const tryGeocode = async (query: string, description: string): Promise<NominatimResult | null> => {
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=br`, {
-          headers: { 'User-Agent': 'ZeExpress/1.0 (delivery app)' },
+          headers: { 'User-Agent': 'Bebidas Express/1.0 (delivery app)' },
         });
         if (!response.ok) throw new Error('Falha na geocodificação');
         const data: NominatimResult[] = await response.json();
@@ -166,3 +166,4 @@ export function DeliveryMap({ address }: DeliveryMapProps) {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useCartStore } from '@/lib/cart-store';
 import { useState, useEffect, useMemo } from 'react';
@@ -700,7 +700,7 @@ export default function PaymentPage() {
         try {
           const fullAddress = `${parsedData.street}, ${parsedData.number}${parsedData.complement ? ', ' + parsedData.complement : ''}, ${parsedData.neighborhood}, ${parsedData.city} - ${parsedData.state}, CEP ${parsedData.cep}`;
           const phoneDigits = parsedData.phone.replace(/\D/g, '');
-          const uniqueEmail = `cliente_${phoneDigits}@zeexpress.com`;
+          const uniqueEmail = `cliente_${phoneDigits}@Bebidas Express.com`;
           await fetch('/api/checkout-session', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -764,7 +764,7 @@ export default function PaymentPage() {
         // Salvar dados para criação do pedido na página PIX
         const fullAddress = `${checkoutData.street}, ${checkoutData.number}${checkoutData.complement ? ', ' + checkoutData.complement : ''}, ${checkoutData.neighborhood}, ${checkoutData.city} - ${checkoutData.state}, CEP ${checkoutData.cep}`;
         const phoneDigits = checkoutData.phone.replace(/\D/g, '');
-        const uniqueEmail = `cliente_${phoneDigits}@zeexpress.com`;
+        const uniqueEmail = `cliente_${phoneDigits}@Bebidas Express.com`;
         
         // Salvar dados completos para criação do pedido na página PIX
         sessionStorage.setItem('pixCheckoutData', JSON.stringify({
@@ -1274,3 +1274,4 @@ export default function PaymentPage() {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -24,7 +24,7 @@ export function Sidebar() {
   return (
     <aside className="w-[280px] bg-gray-900 text-white flex flex-col h-screen fixed left-0 top-0">
       <div className="p-6 border-b border-gray-800">
-        <h1 className="text-2xl font-bold text-orange-500 mb-2">Ze Express</h1>
+        <h1 className="text-2xl font-bold text-orange-500 mb-2">Bebidas Express</h1>
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center font-bold">{session?.user?.name?.charAt(0) || 'A'}</div>
           <div className="flex-1 min-w-0">
@@ -59,3 +59,4 @@ export function Sidebar() {
     </aside>
   );
 }
+
