@@ -55,9 +55,9 @@ export default async function HomePage() {
       <Header />
       <HomeHeroBanner />
 
-      {/* Container de categorias - ajustado para não sobrepor tanto o banner */}
-      <div className="bg-white rounded-t-[32px] -mt-6 relative z-10">
-        <div className="container mx-auto px-4 pt-6">
+      {/* Container de categorias */}
+      <div className="bg-white relative z-10">
+        <div className="container mx-auto px-4 pt-4">
 
           <BannerMessages />
 
