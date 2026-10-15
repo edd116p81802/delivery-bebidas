@@ -19,7 +19,7 @@ export default async function OrdersPage() {
 
   return (
     <OrdersAdmin
-      orders={(orders ?? [])?.map?.((o) => ({
+      orders={(orders ?? [])?.map?.((o: any) => ({
         id: o?.id ?? '',
         customerName: o?.customerName ?? '',
         customerEmail: o?.customerEmail ?? '',
