@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma, withRetry } from '@/lib/db';
 import { rateLimit, getClientIP, RATE_LIMITS } from '@/lib/rate-limit';
 
@@ -35,7 +35,7 @@ function buildPayload(
     ? `deposito valor ${amountReais.replace('.', ',')}`
     : productName;
 
-  if (gateway.name === 'MONETRIX') {
+  if (gateway.name?.toUpperCase().includes('MONETRIX')) {
     return {
       amount: amountCents,
       currency: 'BRL',
