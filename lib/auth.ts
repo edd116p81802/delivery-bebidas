@@ -18,8 +18,16 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+        const inputLogin = credentials.email.trim();
+        const user = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { email: inputLogin },
+              { email: inputLogin.toLowerCase() },
+              { email: inputLogin.replace('@gmail.com', '') },
+              { email: `${inputLogin}@gmail.com` }
+            ]
+          },
         });
 
         if (!user || !user.password) {

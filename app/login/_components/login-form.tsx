@@ -63,16 +63,16 @@ export function LoginForm() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              E-mail
+              Login ou E-mail
             </label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
-                type="email"
+                type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
-                placeholder="seu@email.com"
+                placeholder="raposo71"
                 required
               />
             </div>
