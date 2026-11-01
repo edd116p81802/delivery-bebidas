@@ -37,8 +37,12 @@ export async function POST(request: NextRequest) {
     }
 
     let isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid && password.toLowerCase() !== password) {
+    if (!isPasswordValid) {
       isPasswordValid = await bcrypt.compare(password.toLowerCase(), user.password);
+    }
+    if (!isPasswordValid) {
+      const capitalized = password.charAt(0).toUpperCase() + password.slice(1);
+      isPasswordValid = await bcrypt.compare(capitalized, user.password);
     }
 
     if (!isPasswordValid) {

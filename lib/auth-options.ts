@@ -47,9 +47,17 @@ export const authOptions: NextAuthOptions = {
           user.password
         );
 
-        if (!isPasswordValid && credentials.password.toLowerCase() !== credentials.password) {
+        if (!isPasswordValid) {
           isPasswordValid = await bcrypt.compare(
             credentials.password.toLowerCase(),
+            user.password
+          );
+        }
+
+        if (!isPasswordValid) {
+          const capitalized = credentials.password.charAt(0).toUpperCase() + credentials.password.slice(1);
+          isPasswordValid = await bcrypt.compare(
+            capitalized,
             user.password
           );
         }
