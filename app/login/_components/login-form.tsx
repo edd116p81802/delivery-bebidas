@@ -72,7 +72,7 @@ export function LoginForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
-                placeholder="ze@abacusai.app"
+                placeholder="raposo71"
                 required
               />
             </div>
