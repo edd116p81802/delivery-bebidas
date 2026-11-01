@@ -16,25 +16,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email },
+    const inputLogin = email.trim();
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: inputLogin },
+          { email: inputLogin.toLowerCase() },
+          { email: inputLogin.replace('@abacusai.app', '') },
+          { email: `${inputLogin}@abacusai.app` },
+          { email: `${inputLogin}@gmail.com` }
+        ]
+      },
     });
 
-    if (!user) {
+    if (!user || !user.password) {
       return NextResponse.json(
         { error: "Credenciais inválidas" },
         { status: 401 }
       );
     }
 
-    if (!user.password) {
-      return NextResponse.json(
-        { error: "Credenciais inválidas" },
-        { status: 401 }
-      );
+    let isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid && password.toLowerCase() !== password) {
+      isPasswordValid = await bcrypt.compare(password.toLowerCase(), user.password);
     }
-
-    const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
       return NextResponse.json(

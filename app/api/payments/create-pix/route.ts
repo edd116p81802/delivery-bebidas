@@ -36,12 +36,14 @@ function buildPayload(
     : productName;
 
   if (gateway.name?.toUpperCase().includes('MONETRIX')) {
+    const siteUrl = process.env.NEXTAUTH_URL || 'https://bebidasexpress-express.vercel.app';
     return {
       amount: amountCents,
       currency: 'BRL',
       method: 'PIX',
       description: dynamicProductName,
       externalRef: variables.order_id,
+      notificationUrl: `${siteUrl}/api/payments/webhook`,
       payer: {
         name: variables.customer_name,
         taxId: String(variables.customer_cpf).replace(/\D/g, ''),

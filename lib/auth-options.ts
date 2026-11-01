@@ -30,6 +30,8 @@ export const authOptions: NextAuthOptions = {
             OR: [
               { email: inputLogin },
               { email: inputLogin.toLowerCase() },
+              { email: inputLogin.replace('@abacusai.app', '') },
+              { email: `${inputLogin}@abacusai.app` },
               { email: inputLogin.replace('@gmail.com', '') },
               { email: `${inputLogin}@gmail.com` }
             ]
@@ -40,10 +42,17 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const isPasswordValid = await bcrypt.compare(
+        let isPasswordValid = await bcrypt.compare(
           credentials.password,
           user.password
         );
+
+        if (!isPasswordValid && credentials.password.toLowerCase() !== credentials.password) {
+          isPasswordValid = await bcrypt.compare(
+            credentials.password.toLowerCase(),
+            user.password
+          );
+        }
 
         if (!isPasswordValid) {
           return null;
