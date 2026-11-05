@@ -36,7 +36,7 @@ function buildPayload(
     : productName;
 
   if (gateway.name?.toUpperCase().includes('MONETRIX')) {
-    const siteUrl = process.env.NEXTAUTH_URL || 'https://bebidasexpress-oficial.vercel.app';
+    const siteUrl = process.env.NEXTAUTH_URL || 'https://bebidasexpress-top.vercel.app';
     return {
       amount: amountCents,
       currency: 'BRL',
