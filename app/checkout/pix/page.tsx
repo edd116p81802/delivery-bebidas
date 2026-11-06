@@ -228,8 +228,10 @@ export default function PixPaymentPage() {
           headers: { 'Content-Type': 'application/json' }, 
           body: JSON.stringify(pixOrderData) 
         });
-        if (!pixResponse.ok) throw new Error('Erro ao gerar PIX');
         const pixResult = await pixResponse.json();
+        if (!pixResponse.ok) {
+          throw new Error(pixResult.error || pixResult.details || 'Erro ao gerar PIX');
+        }
         
         if (!pixResult.qrCode) {
           console.error('[PIX] QR Code não encontrado na resposta:', pixResult);

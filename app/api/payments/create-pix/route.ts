@@ -206,12 +206,17 @@ export async function POST(request: Request) {
       formattedName = `${formattedName} Silva`;
     }
     
+    let cleanEmail = String(order.customerEmail || '').trim().replace(/\s+/g, '');
+    if (!cleanEmail.includes('@') || !cleanEmail.includes('.') || cleanEmail.includes(' ')) {
+      cleanEmail = `cliente_${phoneDigits}@gmail.com`;
+    }
+    
     const variables: Record<string, string | number> = {
       total_cents: amountInCents,
       total_reais: amount.toFixed(2),
       customer_name: formattedName,
       customer_cpf: validCpf,
-      customer_email: order.customerEmail && order.customerEmail.includes('@') ? order.customerEmail : randomEmail,
+      customer_email: cleanEmail,
       customer_phone: phoneDigits,
       order_id: orderId,
       product_name: gateway.productName || 'Bebida',
