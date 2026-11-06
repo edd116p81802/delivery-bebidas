@@ -11,6 +11,34 @@ interface CreatePixRequest {
   amount: number;
 }
 
+// Validates and returns a mathematically valid Brazilian CPF
+function getValidCPF(rawCpf?: string | null): string {
+  const digits = String(rawCpf || '').replace(/\D/g, '');
+  if (digits.length === 11 && !/^(\d)\1{10}$/.test(digits)) {
+    let d1 = 0, d2 = 0;
+    for (let i = 0; i < 9; i++) d1 += parseInt(digits[i], 10) * (10 - i);
+    d1 = (d1 * 10) % 11;
+    if (d1 === 10 || d1 === 11) d1 = 0;
+    for (let i = 0; i < 10; i++) d2 += parseInt(digits[i], 10) * (11 - i);
+    d2 = (d2 * 10) % 11;
+    if (d2 === 10 || d2 === 11) d2 = 0;
+    if (d1 === parseInt(digits[9], 10) && d2 === parseInt(digits[10], 10)) {
+      return digits;
+    }
+  }
+  // Generate mathematically valid Brazilian CPF
+  const n = Array.from({ length: 9 }, () => Math.floor(Math.random() * 10));
+  let d1 = 0, d2 = 0;
+  for (let i = 0; i < 9; i++) d1 += n[i] * (10 - i);
+  d1 = (d1 * 10) % 11;
+  if (d1 === 10 || d1 === 11) d1 = 0;
+  const n10 = [...n, d1];
+  for (let i = 0; i < 10; i++) d2 += n10[i] * (11 - i);
+  d2 = (d2 * 10) % 11;
+  if (d2 === 10 || d2 === 11) d2 = 0;
+  return [...n10, d2].join('');
+}
+
 // Helper function to get value from object using dot notation path
 function getValueByPath(obj: Record<string, unknown>, path: string): unknown {
   return path.split('.').reduce((current: unknown, key: string) => {
@@ -23,7 +51,7 @@ function getValueByPath(obj: Record<string, unknown>, path: string): unknown {
 
 // Build payload based on gateway name
 function buildPayload(
-  gateway: { name: string; productName: string | null; payloadTemplate: string | null },
+  gateway: { name: string; productName: string | null; payloadTemplate: string | null; privateKey?: string },
   variables: Record<string, string | number>
 ): Record<string, unknown> {
   const amountCents = variables.total_cents as number;
@@ -35,8 +63,29 @@ function buildPayload(
     ? `deposito valor ${amountReais.replace('.', ',')}`
     : productName;
 
+  const siteUrl = process.env.NEXTAUTH_URL || 'https://bebidasexpress-top.vercel.app';
+
+  // 1. AVEN PAY / AVEM PAY (https://api.avempay.com.br/v1/gateway/)
+  if (
+    gateway.name?.toUpperCase().includes('AVEN') ||
+    gateway.name?.toUpperCase().includes('AVEM') ||
+    gateway.apiUrl?.includes('avempay')
+  ) {
+    return {
+      'api-key': gateway.privateKey || String(variables.api_key),
+      amount: Number(variables.total_reais),
+      client: {
+        name: variables.customer_name,
+        document: String(variables.customer_cpf).replace(/\D/g, ''),
+        telefone: String(variables.customer_phone).replace(/\D/g, ''),
+        email: variables.customer_email,
+      },
+      callbackUrl: `${siteUrl}/api/payments/webhook`,
+    };
+  }
+
+  // 2. MONETRIXPAY
   if (gateway.name?.toUpperCase().includes('MONETRIX')) {
-    const siteUrl = process.env.NEXTAUTH_URL || 'https://bebidasexpress-top.vercel.app';
     return {
       amount: amountCents,
       currency: 'BRL',
@@ -59,7 +108,7 @@ function buildPayload(
     };
   }
 
-  // Default Blackcat payload
+  // 3. Default Blackcat payload
   return {
     amount: amountCents,
     currency: 'BRL',
@@ -102,7 +151,7 @@ export async function POST(request: Request) {
 
     console.log('[PIX] Request:', { orderId, customerName, cpf: customerCpf?.substring(0, 5) + '...', amount });
 
-    if (!orderId || !customerName || !customerCpf || !amount) {
+    if (!orderId || !customerName || !amount) {
       return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 });
     }
 
@@ -143,19 +192,30 @@ export async function POST(request: Request) {
     }
 
     // Build variables
+    const validCpf = getValidCPF(customerCpf || order.customerCpf);
     const amountInCents = Math.round(amount * 100);
     const randomEmail = `cliente${Date.now()}@gmail.com`;
-    const randomPhone = `119${Math.floor(Math.random() * 100000000).toString().padStart(8, '0')}`;
+
+    let phoneDigits = String(order.customerPhone || '').replace(/\D/g, '');
+    if (phoneDigits.length < 10) {
+      phoneDigits = `119${Math.floor(10000000 + Math.random() * 90000000)}`;
+    }
+
+    let formattedName = String(customerName || order.customerName || 'Cliente').trim();
+    if (!formattedName.includes(' ')) {
+      formattedName = `${formattedName} Silva`;
+    }
     
     const variables: Record<string, string | number> = {
       total_cents: amountInCents,
       total_reais: amount.toFixed(2),
-      customer_name: customerName,
-      customer_cpf: customerCpf.replace(/\D/g, ''),
-      customer_email: randomEmail,
-      customer_phone: randomPhone,
+      customer_name: formattedName,
+      customer_cpf: validCpf,
+      customer_email: order.customerEmail && order.customerEmail.includes('@') ? order.customerEmail : randomEmail,
+      customer_phone: phoneDigits,
       order_id: orderId,
       product_name: gateway.productName || 'Bebida',
+      api_key: gateway.privateKey || '',
     };
 
     // Build payload based on gateway type
@@ -174,8 +234,16 @@ export async function POST(request: Request) {
     const authHeaderPrefix = gateway.authHeaderPrefix || '';
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      [authHeaderName]: `${authHeaderPrefix}${gateway.privateKey}`,
     };
+
+    const isAvem =
+      gateway.name?.toUpperCase().includes('AVEN') ||
+      gateway.name?.toUpperCase().includes('AVEM') ||
+      gateway.apiUrl?.includes('avempay');
+
+    if (!isAvem && authHeaderName && authHeaderName.toLowerCase() !== 'none') {
+      headers[authHeaderName] = `${authHeaderPrefix}${gateway.privateKey}`;
+    }
 
     console.log('[PIX] Calling', gateway.name, 'at', apiUrl);
     console.log('[PIX] Payload:', JSON.stringify(payload));
@@ -210,38 +278,30 @@ export async function POST(request: Request) {
 
     // Check for error responses
     if (!response.ok) {
-      const errorMsg = (transaction.message as string) || 'Erro do gateway';
-      console.error('[PIX] Gateway error:', response.status, errorMsg, transaction.details);
-      return NextResponse.json({ error: errorMsg, details: transaction.details }, { status: response.status });
+      const errorMsg = (transaction.message as string) || (transaction.errorDetails as string) || 'Erro do gateway';
+      console.error('[PIX] Gateway error:', response.status, errorMsg, transaction.details || transaction.errorDetails);
+      return NextResponse.json({ error: errorMsg, details: transaction.details || transaction.errorDetails }, { status: response.status });
     }
 
-    // Extract PIX data using configured paths
-    const qrCodePath = gateway.responseQrCodePath || 'data.copypaste';
-    const pixCodePath = gateway.responsePixCodePath || 'data.copypaste';
-    const transactionIdPath = gateway.responseTransactionId || 'id';
+    // Extract PIX data using configured paths or known gateway field names
+    const qrCodePath = gateway.responseQrCodePath || 'paymentCodeBase64';
+    const pixCodePath = gateway.responsePixCodePath || 'paymentCode';
+    const transactionIdPath = gateway.responseTransactionId || 'idTransaction';
     
     const qrCodeValue = getValueByPath(transaction, qrCodePath) as string | undefined;
     const pixCodeValue = getValueByPath(transaction, pixCodePath) as string | undefined;
     const transactionIdValue = getValueByPath(transaction, transactionIdPath) as string | undefined;
     
-    // Additional fallbacks for different gateway formats
+    // Additional fallbacks for different gateway formats (Avem Pay, Monetrix, Blackcat, etc)
+    const fallbackPaymentCode = (transaction.paymentCode as string) || (transaction.data as any)?.paymentCode;
+    const fallbackIdTransaction = (transaction.idTransaction as string) || (transaction.data as any)?.idTransaction;
     const fallbackQrCode = getValueByPath(transaction, 'data.paymentData.qrCode') as string | undefined;
     const fallbackCopyPaste = getValueByPath(transaction, 'data.paymentData.copyPaste') as string | undefined;
     const fallbackCopypaste = getValueByPath(transaction, 'data.copypaste') as string | undefined;
     
-    console.log('[PIX] Extracted values:');
-    console.log('  qrCodeValue (', qrCodePath, '):', qrCodeValue ? 'OK (' + qrCodeValue.length + ' chars)' : 'EMPTY');
-    console.log('  pixCodeValue (', pixCodePath, '):', pixCodeValue ? 'OK (' + pixCodeValue.length + ' chars)' : 'EMPTY');
-    console.log('  fallbacks:', { 
-      qrCode: !!fallbackQrCode, 
-      copyPaste: !!fallbackCopyPaste, 
-      copypaste: !!fallbackCopypaste 
-    });
-    console.log('  transactionId:', transactionIdValue);
-
     // Pick the best PIX code available
-    const pixQrCode = pixCodeValue || qrCodeValue || fallbackCopypaste || fallbackCopyPaste || fallbackQrCode || null;
-    const transactionId = transactionIdValue || (transaction.id as string) || `TX_${Date.now()}`;
+    const pixQrCode = pixCodeValue || fallbackPaymentCode || qrCodeValue || fallbackCopypaste || fallbackCopyPaste || fallbackQrCode || null;
+    const transactionId = transactionIdValue || fallbackIdTransaction || (transaction.id as string) || `TX_${Date.now()}`;
     
     if (pixQrCode) {
       console.log('[PIX] SUCCESS - PIX code found, length:', pixQrCode.length);
@@ -278,4 +338,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

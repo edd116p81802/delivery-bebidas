@@ -6,33 +6,40 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    console.log('[WEBHOOK] Received payload:', JSON.stringify(body));
     
-    const { transactionId, status, externalRef } = body;
+    // Support Monetrix (transactionId / externalRef) and Aven Pay (idTransaction / external_id)
+    const transactionId = body.transactionId || body.idTransaction || body.transaction_id;
+    const externalRef = body.externalRef || body.external_id || body.orderId || body.externalReference;
+    const rawStatus = String(body.status || body.paymentStatus || '').toLowerCase();
 
     if (!transactionId && !externalRef) {
+      console.warn('[WEBHOOK] Missing transaction identifier in body:', body);
       return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 });
     }
 
-    let order;
+    let order = null;
     if (externalRef) {
-      order = await prisma.order.findUnique({ where: { id: externalRef } });
-    } else if (transactionId) {
-      order = await prisma.order.findFirst({ where: { pixTransactionId: transactionId.toString() } });
+      order = await prisma.order.findUnique({ where: { id: String(externalRef) } });
+    }
+    if (!order && transactionId) {
+      order = await prisma.order.findFirst({ where: { pixTransactionId: String(transactionId) } });
     }
 
     if (!order) {
+      console.warn('[WEBHOOK] Order not found for:', { transactionId, externalRef });
       return NextResponse.json({ error: 'Pedido não encontrado' }, { status: 404 });
     }
 
     let paymentStatus: 'PENDING' | 'PROCESSING' | 'PAID' | 'EXPIRED' | 'CANCELLED' | 'FAILED' = 'PROCESSING';
     
-    if (status === 'approved' || status === 'paid' || status === 'completed') {
+    if (rawStatus === 'approved' || rawStatus === 'paid' || rawStatus === 'completed' || rawStatus === 'success') {
       paymentStatus = 'PAID';
-    } else if (status === 'expired') {
+    } else if (rawStatus === 'expired') {
       paymentStatus = 'EXPIRED';
-    } else if (status === 'cancelled' || status === 'refunded') {
+    } else if (rawStatus === 'cancelled' || rawStatus === 'refunded') {
       paymentStatus = 'CANCELLED';
-    } else if (status === 'failed') {
+    } else if (rawStatus === 'failed') {
       paymentStatus = 'FAILED';
     }
 
@@ -45,9 +52,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true });
+    console.log(`[WEBHOOK] Order ${order.id} updated to ${paymentStatus}`);
+    return NextResponse.json({ success: true, status: 'ok' });
   } catch (error) {
-    console.error('Webhook error:', error);
+    console.error('[WEBHOOK] Error processing webhook:', error);
     return NextResponse.json({ error: 'Erro ao processar webhook' }, { status: 500 });
   }
 }
