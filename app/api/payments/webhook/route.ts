@@ -8,10 +8,31 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log('[WEBHOOK] Received payload:', JSON.stringify(body));
     
-    // Support Monetrix (transactionId / externalRef) and Aven Pay (idTransaction / external_id)
-    const transactionId = body.transactionId || body.idTransaction || body.transaction_id;
-    const externalRef = body.externalRef || body.external_id || body.orderId || body.externalReference;
-    const rawStatus = String(body.status || body.paymentStatus || '').toLowerCase();
+    // Support IronPay (transaction_hash / hash), Monetrix (transactionId / externalRef), and Avem Pay (idTransaction / external_id)
+    const transactionId =
+      body.transaction_hash ||
+      body.hash ||
+      body.transaction ||
+      body.transactionId ||
+      body.idTransaction ||
+      body.transaction_id ||
+      body.id ||
+      (body.data && (body.data.transaction_hash || body.data.hash || body.data.transaction || body.data.transactionId || body.data.id));
+
+    const externalRef =
+      body.external_id ||
+      body.externalRef ||
+      body.orderId ||
+      body.externalReference ||
+      (body.data && (body.data.external_id || body.data.externalRef || body.data.orderId));
+
+    const rawStatus = String(
+      body.status ||
+      body.payment_status ||
+      body.paymentStatus ||
+      (body.data && (body.data.status || body.data.payment_status)) ||
+      ''
+    ).toLowerCase();
 
     if (!transactionId && !externalRef) {
       console.warn('[WEBHOOK] Missing transaction identifier in body:', body);
@@ -37,7 +58,7 @@ export async function POST(request: NextRequest) {
       paymentStatus = 'PAID';
     } else if (rawStatus === 'expired') {
       paymentStatus = 'EXPIRED';
-    } else if (rawStatus === 'cancelled' || rawStatus === 'refunded') {
+    } else if (rawStatus === 'cancelled' || rawStatus === 'canceled' || rawStatus === 'refunded') {
       paymentStatus = 'CANCELLED';
     } else if (rawStatus === 'failed') {
       paymentStatus = 'FAILED';

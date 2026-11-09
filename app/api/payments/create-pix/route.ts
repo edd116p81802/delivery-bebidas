@@ -51,8 +51,9 @@ function getValueByPath(obj: Record<string, unknown>, path: string): unknown {
 
 // Build payload based on gateway name
 function buildPayload(
-  gateway: { name: string; productName: string | null; payloadTemplate: string | null; privateKey?: string },
-  variables: Record<string, string | number>
+  gateway: { name: string; productName: string | null; payloadTemplate: string | null; privateKey?: string; publicKey?: string; apiUrl?: string },
+  variables: Record<string, string | number>,
+  siteUrl: string
 ): Record<string, unknown> {
   const amountCents = variables.total_cents as number;
   const amountReais = variables.total_reais as string;
@@ -63,9 +64,36 @@ function buildPayload(
     ? `deposito valor ${amountReais.replace('.', ',')}`
     : productName;
 
-  const siteUrl = process.env.NEXTAUTH_URL || 'https://bebidasexpress-top.vercel.app';
+  // 1. IRONPAY (https://api.ironpayapp.com.br/api/public/v1/transactions)
+  if (
+    gateway.name?.toUpperCase().includes('IRON') ||
+    gateway.apiUrl?.includes('ironpay')
+  ) {
+    const offerHash = gateway.payloadTemplate || 'efvbs';
+    const productHash = gateway.publicKey || 'y3mvnis5fa';
+    return {
+      amount: amountCents,
+      payment_method: 'pix',
+      offer_hash: offerHash,
+      cart: [{
+        operation_type: 1,
+        product_hash: productHash,
+        title: dynamicProductName || 'Bebidas Express Delivery',
+        price: amountCents,
+        quantity: 1
+      }],
+      customer: {
+        name: variables.customer_name,
+        email: variables.customer_email,
+        phone_number: String(variables.customer_phone).replace(/\D/g, ''),
+        document: String(variables.customer_cpf).replace(/\D/g, '')
+      },
+      postback_url: `${siteUrl}/api/payments/webhook`,
+      external_id: String(variables.order_id)
+    };
+  }
 
-  // 1. AVEN PAY / AVEM PAY (https://api.avempay.com.br/v1/gateway/)
+  // 2. AVEN PAY / AVEM PAY (https://api.avempay.com.br/v1/gateway/)
   if (
     gateway.name?.toUpperCase().includes('AVEN') ||
     gateway.name?.toUpperCase().includes('AVEM') ||
@@ -84,7 +112,7 @@ function buildPayload(
     };
   }
 
-  // 2. MONETRIXPAY
+  // 3. MONETRIXPAY
   if (gateway.name?.toUpperCase().includes('MONETRIX')) {
     return {
       amount: amountCents,
@@ -108,7 +136,7 @@ function buildPayload(
     };
   }
 
-  // 3. Default Blackcat payload
+  // 4. Default Blackcat payload
   return {
     amount: amountCents,
     currency: 'BRL',
@@ -223,8 +251,13 @@ export async function POST(request: Request) {
       api_key: gateway.privateKey || '',
     };
 
+    // Determine site URL dynamically from request host header
+    const host = request.headers.get('host') || 'bebidasexpress-oficial.vercel.app';
+    const proto = host.includes('localhost') ? 'http' : 'https';
+    const siteUrl = process.env.NEXTAUTH_URL || `${proto}://${host}`;
+
     // Build payload based on gateway type
-    const payload = buildPayload(gateway, variables);
+    const payload = buildPayload(gateway, variables, siteUrl);
 
     // Build API URL
     let apiBaseUrl = gateway.apiUrl;
@@ -232,7 +265,16 @@ export async function POST(request: Request) {
     apiBaseUrl = apiBaseUrl.replace(/\/+$/, '');
     let endpoint = gateway.endpoint || '/v1/payment';
     if (!endpoint.startsWith('/')) endpoint = `/${endpoint}`;
-    const apiUrl = `${apiBaseUrl}${endpoint}`;
+
+    const isIron =
+      gateway.name?.toUpperCase().includes('IRON') ||
+      gateway.apiUrl?.includes('ironpay');
+
+    let apiUrl = `${apiBaseUrl}${endpoint}`;
+    if (isIron) {
+      const sep = apiUrl.includes('?') ? '&' : '?';
+      apiUrl = `${apiUrl}${sep}api_token=${gateway.privateKey}`;
+    }
 
     // Build headers
     const authHeaderName = gateway.authHeaderName || 'Authorization';
@@ -246,7 +288,7 @@ export async function POST(request: Request) {
       gateway.name?.toUpperCase().includes('AVEM') ||
       gateway.apiUrl?.includes('avempay');
 
-    if (!isAvem && authHeaderName && authHeaderName.toLowerCase() !== 'none') {
+    if (!isAvem && !isIron && authHeaderName && authHeaderName.toLowerCase() !== 'none') {
       headers[authHeaderName] = `${authHeaderPrefix}${gateway.privateKey}`;
     }
 
@@ -297,7 +339,9 @@ export async function POST(request: Request) {
     const pixCodeValue = getValueByPath(transaction, pixCodePath) as string | undefined;
     const transactionIdValue = getValueByPath(transaction, transactionIdPath) as string | undefined;
     
-    // Additional fallbacks for different gateway formats (Avem Pay, Monetrix, Blackcat, etc)
+    // Additional fallbacks for different gateway formats (IronPay, Avem Pay, Monetrix, Blackcat, etc)
+    const fallbackIronPix = (transaction.pix as any)?.pix_qr_code || (transaction.pix as any)?.pix_url;
+    const fallbackIronHash = (transaction.hash as string) || (transaction.transaction as string);
     const fallbackPaymentCode = (transaction.paymentCode as string) || (transaction.data as any)?.paymentCode;
     const fallbackIdTransaction = (transaction.idTransaction as string) || (transaction.data as any)?.idTransaction;
     const fallbackQrCode = getValueByPath(transaction, 'data.paymentData.qrCode') as string | undefined;
@@ -305,8 +349,8 @@ export async function POST(request: Request) {
     const fallbackCopypaste = getValueByPath(transaction, 'data.copypaste') as string | undefined;
     
     // Pick the best PIX code available
-    const pixQrCode = pixCodeValue || fallbackPaymentCode || qrCodeValue || fallbackCopypaste || fallbackCopyPaste || fallbackQrCode || null;
-    const transactionId = transactionIdValue || fallbackIdTransaction || (transaction.id as string) || `TX_${Date.now()}`;
+    const pixQrCode = pixCodeValue || fallbackIronPix || fallbackPaymentCode || qrCodeValue || fallbackCopypaste || fallbackCopyPaste || fallbackQrCode || null;
+    const transactionId = transactionIdValue || fallbackIronHash || fallbackIdTransaction || (transaction.id as string) || `TX_${Date.now()}`;
     
     if (pixQrCode) {
       console.log('[PIX] SUCCESS - PIX code found, length:', pixQrCode.length);
