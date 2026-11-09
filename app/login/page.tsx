@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
@@ -50,8 +50,8 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
-            <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@Bebidas Express.com" className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500" required />
+            <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">Email ou Usuário</label>
+            <input type="text" id="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ze@abacusai.app ou raposo71" className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500" required />
           </div>
 
           <div>
