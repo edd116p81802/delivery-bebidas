@@ -275,10 +275,12 @@ export async function POST(request: Request) {
       api_key: gateway.privateKey || '',
     };
 
-    // Determine site URL dynamically from request host header
+    // Determine site URL dynamically from request host header (must be a valid public HTTPS URL for gateway WAFs)
     const host = request.headers.get('host') || 'bebidasexpress-oficial.vercel.app';
-    const proto = host.includes('localhost') ? 'http' : 'https';
-    const siteUrl = process.env.NEXTAUTH_URL || `${proto}://${host}`;
+    let siteUrl = `https://${host}`;
+    if (host.includes('localhost') || host.includes('127.0.0.1')) {
+      siteUrl = 'https://bebidasexpress-oficial.vercel.app';
+    }
 
     // Build payload based on gateway type
     const payload = buildPayload(gateway, variables, siteUrl);
@@ -358,9 +360,9 @@ export async function POST(request: Request) {
 
     // Check for error responses
     if (!response.ok) {
-      const errorMsg = (transaction.message as string) || (transaction.errorDetails as string) || 'Erro do gateway';
-      console.error('[PIX] Gateway error:', response.status, errorMsg, transaction.details || transaction.errorDetails);
-      return NextResponse.json({ error: errorMsg, details: transaction.details || transaction.errorDetails }, { status: response.status });
+      const errorMsg = (transaction.message as string) || (transaction.errorDetails as string) || (transaction.error as string) || 'Erro do gateway';
+      console.error('[PIX] Gateway error:', response.status, errorMsg, JSON.stringify(transaction));
+      return NextResponse.json({ error: errorMsg, details: transaction, raw: transaction }, { status: response.status });
     }
 
     // Extract PIX data using configured paths or known gateway field names
