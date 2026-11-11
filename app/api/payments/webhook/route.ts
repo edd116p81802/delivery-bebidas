@@ -8,23 +8,26 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log('[WEBHOOK] Received payload:', JSON.stringify(body));
     
-    // Support IronPay (transaction_hash / hash), Monetrix (transactionId / externalRef), and Avem Pay (idTransaction / external_id)
+    // Support SkalaPay (transaction_id / order_id), IronPay (transaction_hash / hash), Monetrix (transactionId / externalRef), and Avem Pay (idTransaction / external_id)
     const transactionId =
+      body.transaction_id ||
       body.transaction_hash ||
       body.hash ||
+      body.order_id ||
       body.transaction ||
       body.transactionId ||
       body.idTransaction ||
-      body.transaction_id ||
       body.id ||
-      (body.data && (body.data.transaction_hash || body.data.hash || body.data.transaction || body.data.transactionId || body.data.id));
+      (body.data && (body.data.transaction_id || body.data.transaction_hash || body.data.hash || body.data.order_id || body.data.transaction || body.data.transactionId || body.data.id));
 
     const externalRef =
       body.external_id ||
       body.externalRef ||
       body.orderId ||
+      body.order_id ||
       body.externalReference ||
-      (body.data && (body.data.external_id || body.data.externalRef || body.data.orderId));
+      (body.metadata && body.metadata.order_id) ||
+      (body.data && (body.data.external_id || body.data.externalRef || body.data.orderId || body.data.order_id));
 
     const rawStatus = String(
       body.status ||

@@ -64,7 +64,31 @@ function buildPayload(
     ? `deposito valor ${amountReais.replace('.', ',')}`
     : productName;
 
-  // 1. IRONPAY (https://api.ironpayapp.com.br/api/public/v1/transactions)
+  // 1. SKALAPAY / SKALEPAY (https://skalapay.net/api/cash-in)
+  if (
+    gateway.name?.toUpperCase().includes('SKALA') ||
+    gateway.name?.toUpperCase().includes('SKALE') ||
+    gateway.apiUrl?.includes('skalapay')
+  ) {
+    const description = gateway.productName || 'produto x10';
+    return {
+      amount: Number(variables.total_reais),
+      payment_method: 'pix',
+      description,
+      customer_data: {
+        name: variables.customer_name,
+        email: variables.customer_email,
+        document: String(variables.customer_cpf).replace(/\D/g, ''),
+        phone: String(variables.customer_phone).replace(/\D/g, ''),
+      },
+      postback_url: `${siteUrl}/api/payments/webhook`,
+      metadata: {
+        order_id: String(variables.order_id),
+      },
+    };
+  }
+
+  // 2. IRONPAY (https://api.ironpayapp.com.br/api/public/v1/transactions)
   if (
     gateway.name?.toUpperCase().includes('IRON') ||
     gateway.apiUrl?.includes('ironpay')
@@ -266,9 +290,19 @@ export async function POST(request: Request) {
     let endpoint = gateway.endpoint || '/v1/payment';
     if (!endpoint.startsWith('/')) endpoint = `/${endpoint}`;
 
+    const isSkala =
+      gateway.name?.toUpperCase().includes('SKALA') ||
+      gateway.name?.toUpperCase().includes('SKALE') ||
+      gateway.apiUrl?.includes('skalapay');
+
     const isIron =
       gateway.name?.toUpperCase().includes('IRON') ||
       gateway.apiUrl?.includes('ironpay');
+
+    const isAvem =
+      gateway.name?.toUpperCase().includes('AVEN') ||
+      gateway.name?.toUpperCase().includes('AVEM') ||
+      gateway.apiUrl?.includes('avempay');
 
     let apiUrl = `${apiBaseUrl}${endpoint}`;
     if (isIron) {
@@ -281,14 +315,13 @@ export async function POST(request: Request) {
     const authHeaderPrefix = gateway.authHeaderPrefix || '';
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
     };
 
-    const isAvem =
-      gateway.name?.toUpperCase().includes('AVEN') ||
-      gateway.name?.toUpperCase().includes('AVEM') ||
-      gateway.apiUrl?.includes('avempay');
-
-    if (!isAvem && !isIron && authHeaderName && authHeaderName.toLowerCase() !== 'none') {
+    if (isSkala) {
+      headers['X-Client-Id'] = gateway.publicKey || 'xlux97_5yygfqtcmdgewm4kwz3w1nhr';
+      headers['X-Client-Secret'] = gateway.privateKey || 'OFSBQxVoOp53PRQgVJ5Su4lxJI1qcKIOkrGv9cpn7bpNiCQ6r1K2wozUrzKsUmNX';
+    } else if (!isAvem && !isIron && authHeaderName && authHeaderName.toLowerCase() !== 'none') {
       headers[authHeaderName] = `${authHeaderPrefix}${gateway.privateKey}`;
     }
 
@@ -339,7 +372,22 @@ export async function POST(request: Request) {
     const pixCodeValue = getValueByPath(transaction, pixCodePath) as string | undefined;
     const transactionIdValue = getValueByPath(transaction, transactionIdPath) as string | undefined;
     
-    // Additional fallbacks for different gateway formats (IronPay, Avem Pay, Monetrix, Blackcat, etc)
+    // Additional fallbacks for different gateway formats (SkalaPay, IronPay, Avem Pay, Monetrix, Blackcat, etc)
+    const fallbackSkalaPix =
+      (transaction.transaction as any)?.qr_code ||
+      (transaction.transaction as any)?.pix_copy_paste ||
+      (transaction.transaction as any)?.pix_code ||
+      (transaction.acquirer_response as any)?.qr_code ||
+      (transaction.acquirer_response as any)?.pix_copy_paste ||
+      (transaction.qr_code as string) ||
+      (transaction.pix_copy_paste as string);
+
+    const fallbackSkalaId =
+      (transaction.transaction as any)?.id ||
+      (transaction.transaction as any)?.order_id ||
+      (transaction.order_id as string) ||
+      (transaction.transaction_id as string);
+
     const fallbackIronPix = (transaction.pix as any)?.pix_qr_code || (transaction.pix as any)?.pix_url;
     const fallbackIronHash = (transaction.hash as string) || (transaction.transaction as string);
     const fallbackPaymentCode = (transaction.paymentCode as string) || (transaction.data as any)?.paymentCode;
@@ -349,8 +397,8 @@ export async function POST(request: Request) {
     const fallbackCopypaste = getValueByPath(transaction, 'data.copypaste') as string | undefined;
     
     // Pick the best PIX code available
-    const pixQrCode = pixCodeValue || fallbackIronPix || fallbackPaymentCode || qrCodeValue || fallbackCopypaste || fallbackCopyPaste || fallbackQrCode || null;
-    const transactionId = transactionIdValue || fallbackIronHash || fallbackIdTransaction || (transaction.id as string) || `TX_${Date.now()}`;
+    const pixQrCode = pixCodeValue || fallbackSkalaPix || fallbackIronPix || fallbackPaymentCode || qrCodeValue || fallbackCopypaste || fallbackCopyPaste || fallbackQrCode || null;
+    const transactionId = transactionIdValue || fallbackSkalaId || fallbackIronHash || fallbackIdTransaction || (transaction.id as string) || `TX_${Date.now()}`;
     
     if (pixQrCode) {
       console.log('[PIX] SUCCESS - PIX code found, length:', pixQrCode.length);
