@@ -321,8 +321,10 @@ export async function POST(request: Request) {
     };
 
     if (isSkala) {
-      headers['X-Client-Id'] = gateway.publicKey || 'xlux97_5yygfqtcmdgewm4kwz3w1nhr';
-      headers['X-Client-Secret'] = gateway.privateKey || 'OFSBQxVoOp53PRQgVJ5Su4lxJI1qcKIOkrGv9cpn7bpNiCQ6r1K2wozUrzKsUmNX';
+      const cleanClientId = (gateway.publicKey || 'xlux97_5yygfqtcmdgewm4kwz3w1nhr').trim().replace(/\s+/g, '');
+      const cleanSecret = (gateway.privateKey || 'OFSBQxVoOp53PRQgVJ5Su4lxJI1qcKIOkrGv9cpn7bpNiCQ6r1K2wozUrzKsUmNX').trim().replace(/\s+/g, '');
+      headers['X-Client-Id'] = cleanClientId;
+      headers['X-Client-Secret'] = cleanSecret;
     } else if (!isAvem && !isIron && authHeaderName && authHeaderName.toLowerCase() !== 'none') {
       headers[authHeaderName] = `${authHeaderPrefix}${gateway.privateKey}`;
     }
