@@ -35,3 +35,8 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+scripts/check-*.js
+scripts/setup-droppay.js
+scripts/test-hash.mjs
+scripts/test-login.js

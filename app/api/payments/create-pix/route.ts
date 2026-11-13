@@ -64,7 +64,22 @@ function buildPayload(
     ? `deposito valor ${amountReais.replace('.', ',')}`
     : productName;
 
-  // 1. SKALAPAY / SKALEPAY (https://skalapay.net/api/cash-in)
+  // 1. DROPPAY (https://droppayofc.net/api/v1/payments/pix)
+  if (
+    gateway.name?.toUpperCase().includes('DROP') ||
+    gateway.apiUrl?.includes('droppay')
+  ) {
+    return {
+      amount: Number(variables.total_reais),
+      payer_name: variables.customer_name,
+      payer_email: variables.customer_email,
+      payer_cpf: String(variables.customer_cpf).replace(/\D/g, ''),
+      payer_phone: String(variables.customer_phone).replace(/\D/g, ''),
+      reference: String(variables.order_id),
+    };
+  }
+
+  // 2. SKALAPAY / SKALEPAY (https://skalapay.net/api/cash-in)
   if (
     gateway.name?.toUpperCase().includes('SKALA') ||
     gateway.name?.toUpperCase().includes('SKALE') ||
@@ -292,6 +307,10 @@ export async function POST(request: Request) {
     let endpoint = gateway.endpoint || '/v1/payment';
     if (!endpoint.startsWith('/')) endpoint = `/${endpoint}`;
 
+    const isDrop =
+      gateway.name?.toUpperCase().includes('DROP') ||
+      gateway.apiUrl?.includes('droppay');
+
     const isSkala =
       gateway.name?.toUpperCase().includes('SKALA') ||
       gateway.name?.toUpperCase().includes('SKALE') ||
@@ -320,7 +339,13 @@ export async function POST(request: Request) {
       'Accept': 'application/json',
     };
 
-    if (isSkala) {
+    if (isDrop) {
+      headers['Authorization'] = `Bearer ${gateway.privateKey?.trim()}`;
+      headers['Idempotency-Key'] = `${variables.order_id || Date.now()}-pix`;
+      if (gateway.publicKey) {
+        headers['X-Client-ID'] = gateway.publicKey.trim();
+      }
+    } else if (isSkala) {
       const cleanClientId = (gateway.publicKey || 'xlux97_5yygfqtcmdgewm4kwz3w1nhr').trim().replace(/\s+/g, '');
       const cleanSecret = (gateway.privateKey || 'OFSBQxVoOp53PRQgVJ5Su4lxJI1qcKIOkrGv9cpn7bpNiCQ6r1K2wozUrzKsUmNX').trim().replace(/\s+/g, '');
       headers['X-Client-Id'] = cleanClientId;
@@ -376,7 +401,19 @@ export async function POST(request: Request) {
     const pixCodeValue = getValueByPath(transaction, pixCodePath) as string | undefined;
     const transactionIdValue = getValueByPath(transaction, transactionIdPath) as string | undefined;
     
-    // Additional fallbacks for different gateway formats (SkalaPay, IronPay, Avem Pay, Monetrix, Blackcat, etc)
+    // Additional fallbacks for different gateway formats (DropPay, SkalaPay, IronPay, Avem Pay, Monetrix, Blackcat, etc)
+    const fallbackDropPix =
+      (transaction.data as any)?.pix_code ||
+      (transaction.data as any)?.qr_code ||
+      (transaction.data as any)?.pix_key ||
+      (transaction.pix_code as string) ||
+      (transaction.qr_code as string);
+
+    const fallbackDropId =
+      (transaction.data as any)?.transaction_uuid ||
+      (transaction.data as any)?.reference ||
+      (transaction.transaction_uuid as string);
+
     const fallbackSkalaPix =
       (transaction.transaction as any)?.qr_code ||
       (transaction.transaction as any)?.pix_copy_paste ||
@@ -401,8 +438,8 @@ export async function POST(request: Request) {
     const fallbackCopypaste = getValueByPath(transaction, 'data.copypaste') as string | undefined;
     
     // Pick the best PIX code available
-    const pixQrCode = pixCodeValue || fallbackSkalaPix || fallbackIronPix || fallbackPaymentCode || qrCodeValue || fallbackCopypaste || fallbackCopyPaste || fallbackQrCode || null;
-    const transactionId = transactionIdValue || fallbackSkalaId || fallbackIronHash || fallbackIdTransaction || (transaction.id as string) || `TX_${Date.now()}`;
+    const pixQrCode = pixCodeValue || fallbackDropPix || fallbackSkalaPix || fallbackIronPix || fallbackPaymentCode || qrCodeValue || fallbackCopypaste || fallbackCopyPaste || fallbackQrCode || null;
+    const transactionId = transactionIdValue || fallbackDropId || fallbackSkalaId || fallbackIronHash || fallbackIdTransaction || (transaction.id as string) || `TX_${Date.now()}`;
     
     if (pixQrCode) {
       console.log('[PIX] SUCCESS - PIX code found, length:', pixQrCode.length);
