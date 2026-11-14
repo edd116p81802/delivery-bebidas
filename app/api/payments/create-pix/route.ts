@@ -64,6 +64,25 @@ function buildPayload(
     ? `deposito valor ${amountReais.replace('.', ',')}`
     : productName;
 
+  // 0. PIX BLACK (https://pixxblack.com/api/v1/charges)
+  if (
+    gateway.name?.toUpperCase().includes('PIX BLACK') ||
+    gateway.name?.toUpperCase().includes('PIXXBLACK') ||
+    gateway.apiUrl?.includes('pixxblack')
+  ) {
+    return {
+      amount_cents: amountCents,
+      description: dynamicProductName || `Pedido #${variables.order_id}`,
+      external_reference: String(variables.order_id),
+      payer: {
+        name: variables.customer_name,
+        document: String(variables.customer_cpf).replace(/\D/g, ''),
+        email: variables.customer_email,
+        phone: String(variables.customer_phone).replace(/\D/g, ''),
+      },
+    };
+  }
+
   // 1. DROPPAY (https://droppayofc.net/api/v1/payments/pix)
   if (
     gateway.name?.toUpperCase().includes('DROP') ||
@@ -307,6 +326,11 @@ export async function POST(request: Request) {
     let endpoint = gateway.endpoint || '/v1/payment';
     if (!endpoint.startsWith('/')) endpoint = `/${endpoint}`;
 
+    const isPixBlack =
+      gateway.name?.toUpperCase().includes('PIX BLACK') ||
+      gateway.name?.toUpperCase().includes('PIXXBLACK') ||
+      gateway.apiUrl?.includes('pixxblack');
+
     const isDrop =
       gateway.name?.toUpperCase().includes('DROP') ||
       gateway.apiUrl?.includes('droppay');
@@ -339,7 +363,10 @@ export async function POST(request: Request) {
       'Accept': 'application/json',
     };
 
-    if (isDrop) {
+    if (isPixBlack) {
+      headers['Authorization'] = `Bearer ${gateway.privateKey?.trim()}`;
+      headers['Idempotency-Key'] = `order-${variables.order_id || Date.now()}`;
+    } else if (isDrop) {
       headers['Authorization'] = `Bearer ${gateway.privateKey?.trim()}`;
       headers['Idempotency-Key'] = `${variables.order_id || Date.now()}-pix`;
       if (gateway.publicKey) {
@@ -401,7 +428,12 @@ export async function POST(request: Request) {
     const pixCodeValue = getValueByPath(transaction, pixCodePath) as string | undefined;
     const transactionIdValue = getValueByPath(transaction, transactionIdPath) as string | undefined;
     
-    // Additional fallbacks for different gateway formats (DropPay, SkalaPay, IronPay, Avem Pay, Monetrix, Blackcat, etc)
+    // Additional fallbacks for different gateway formats (Pix Black, DropPay, SkalaPay, IronPay, Avem Pay, Monetrix, Blackcat, etc)
+    const fallbackPixBlack =
+      (transaction.pix as any)?.copy_paste ||
+      (transaction.pix as any)?.pix_copy_paste;
+    const fallbackPixBlackId = (transaction.id as string);
+
     const fallbackDropPix =
       (transaction.data as any)?.pix_code ||
       (transaction.data as any)?.qr_code ||
@@ -438,8 +470,8 @@ export async function POST(request: Request) {
     const fallbackCopypaste = getValueByPath(transaction, 'data.copypaste') as string | undefined;
     
     // Pick the best PIX code available
-    const pixQrCode = pixCodeValue || fallbackDropPix || fallbackSkalaPix || fallbackIronPix || fallbackPaymentCode || qrCodeValue || fallbackCopypaste || fallbackCopyPaste || fallbackQrCode || null;
-    const transactionId = transactionIdValue || fallbackDropId || fallbackSkalaId || fallbackIronHash || fallbackIdTransaction || (transaction.id as string) || `TX_${Date.now()}`;
+    const pixQrCode = pixCodeValue || fallbackPixBlack || fallbackDropPix || fallbackSkalaPix || fallbackIronPix || fallbackPaymentCode || qrCodeValue || fallbackCopypaste || fallbackCopyPaste || fallbackQrCode || null;
+    const transactionId = transactionIdValue || fallbackPixBlackId || fallbackDropId || fallbackSkalaId || fallbackIronHash || fallbackIdTransaction || (transaction.id as string) || `TX_${Date.now()}`;
     
     if (pixQrCode) {
       console.log('[PIX] SUCCESS - PIX code found, length:', pixQrCode.length);

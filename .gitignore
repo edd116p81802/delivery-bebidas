@@ -40,3 +40,4 @@ scripts/check-*.js
 scripts/setup-droppay.js
 scripts/test-hash.mjs
 scripts/test-login.js
+scripts/setup-*.js
