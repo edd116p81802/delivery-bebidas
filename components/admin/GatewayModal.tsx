@@ -18,6 +18,7 @@ interface Gateway {
   responsePixCodePath: string;
   responseTransactionId: string;
   payloadTemplate: string;
+  hasPrivateKey?: boolean;
 }
 
 interface GatewayModalProps {
@@ -53,6 +54,7 @@ export default function GatewayModal({
 }: GatewayModalProps) {
   const [form, setForm] = useState<Gateway>(defaultGateway);
   const [showPrivateKey, setShowPrivateKey] = useState(false);
+  const [removePrivateKey, setRemovePrivateKey] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     basic: true,
     auth: true,
@@ -75,6 +77,7 @@ export default function GatewayModal({
       setForm(defaultGateway);
     }
     setShowPrivateKey(false);
+    setRemovePrivateKey(false);
     setJsonError(null);
   }, [gateway, isOpen]);
 
@@ -100,7 +103,10 @@ export default function GatewayModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (jsonError) return;
-    await onSave(form);
+    await onSave({
+      ...form,
+      privateKey: removePrivateKey ? '__REMOVE__' : form.privateKey,
+    });
   };
 
   if (!isOpen) return null;
@@ -250,17 +256,27 @@ export default function GatewayModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Chave Privada {!isEditing && <span className="text-red-500">*</span>}
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Chave Privada {!isEditing && <span className="text-red-500">*</span>}
+                    </label>
+                    {isEditing && gateway?.hasPrivateKey && (
+                      <span className="text-xs text-green-600 font-medium">
+                        ✓ Configurada no servidor
+                      </span>
+                    )}
+                  </div>
                   <div className="relative">
                     <input
                       type={showPrivateKey ? 'text' : 'password'}
                       value={form.privateKey}
-                      onChange={(e) => handleChange('privateKey', e.target.value)}
-                      placeholder={isEditing ? '(deixe em branco para manter)' : 'sk_...'}
-                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                      required={!isEditing}
+                      onChange={(e) => {
+                        setRemovePrivateKey(false);
+                        handleChange('privateKey', e.target.value);
+                      }}
+                      placeholder={isEditing ? (removePrivateKey ? 'Chave será removida ao salvar' : '(deixe em branco para manter)') : 'sk_...'}
+                      className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${removePrivateKey ? 'border-red-300 bg-red-50 text-red-600' : 'border-gray-300'}`}
+                      required={!isEditing && !removePrivateKey}
                     />
                     <button
                       type="button"
@@ -270,6 +286,27 @@ export default function GatewayModal({
                       {showPrivateKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
+                  {isEditing && gateway?.hasPrivateKey && (
+                    <div className="mt-1.5 flex items-center justify-between text-xs">
+                      {removePrivateKey ? (
+                        <span className="text-red-600 font-medium">Chave atual será removida ao salvar</span>
+                      ) : (
+                        <span className="text-gray-500">Chave protegida no servidor</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRemovePrivateKey(!removePrivateKey);
+                          if (!removePrivateKey) {
+                            handleChange('privateKey', '');
+                          }
+                        }}
+                        className={`font-medium ${removePrivateKey ? 'text-gray-600 hover:underline' : 'text-red-600 hover:text-red-700'}`}
+                      >
+                        {removePrivateKey ? 'Cancelar remoção' : 'Remover chave privada'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

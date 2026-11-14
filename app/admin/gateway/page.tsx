@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit, Trash2, Power, PowerOff, Shield, ExternalLink, CheckCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Power, PowerOff, Shield, ExternalLink, CheckCircle, Key, Eye, EyeOff, Check, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import GatewayModal from '@/components/admin/GatewayModal';
 import ConfirmModal from '@/components/admin/ConfirmModal';
@@ -31,6 +31,11 @@ export default function GatewayPage() {
   const [gateways, setGateways] = useState<Gateway[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Quick Key Management Box state
+  const [newKeys, setNewKeys] = useState<Record<string, string>>({});
+  const [showKeyInput, setShowKeyInput] = useState<Record<string, boolean>>({});
+  const [isSavingKey, setIsSavingKey] = useState<Record<string, boolean>>({});
 
   // Modal states
   const [showGatewayModal, setShowGatewayModal] = useState(false);
@@ -78,6 +83,74 @@ export default function GatewayPage() {
     }
   };
 
+  const handleKeyInputChange = (gatewayId: string, value: string) => {
+    setNewKeys((prev) => ({ ...prev, [gatewayId]: value }));
+  };
+
+  const toggleShowKey = (gatewayId: string) => {
+    setShowKeyInput((prev) => ({ ...prev, [gatewayId]: !prev[gatewayId] }));
+  };
+
+  const handleUpdateKey = async (gatewayId: string, gatewayName: string) => {
+    const keyToSave = newKeys[gatewayId]?.trim();
+    if (!keyToSave) {
+      toast.error('Digite ou cole a nova chave privada');
+      return;
+    }
+
+    setIsSavingKey((prev) => ({ ...prev, [gatewayId]: true }));
+    try {
+      const res = await fetch(`/api/admin/gateway/${gatewayId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ privateKey: keyToSave }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Erro ao atualizar chave');
+      }
+
+      toast.success(`Chave privada de "${gatewayName}" atualizada com sucesso!`);
+      setNewKeys((prev) => ({ ...prev, [gatewayId]: '' }));
+      fetchGateways();
+    } catch (error) {
+      console.error('Erro ao atualizar chave:', error);
+      toast.error(error instanceof Error ? error.message : 'Erro ao atualizar chave');
+    } finally {
+      setIsSavingKey((prev) => ({ ...prev, [gatewayId]: false }));
+    }
+  };
+
+  const handleRemoveKey = async (gateway: Gateway) => {
+    if (!confirm(`Tem certeza que deseja remover a chave privada do gateway "${gateway.name}"?`)) {
+      return;
+    }
+
+    setIsSavingKey((prev) => ({ ...prev, [gateway.id]: true }));
+    try {
+      const res = await fetch(`/api/admin/gateway/${gateway.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ privateKey: '' }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Erro ao remover chave');
+      }
+
+      toast.success(`Chave privada de "${gateway.name}" removida com sucesso!`);
+      setNewKeys((prev) => ({ ...prev, [gateway.id]: '' }));
+      fetchGateways();
+    } catch (error) {
+      console.error('Erro ao remover chave:', error);
+      toast.error(error instanceof Error ? error.message : 'Erro ao remover chave');
+    } finally {
+      setIsSavingKey((prev) => ({ ...prev, [gateway.id]: false }));
+    }
+  };
+
   const handleSaveGateway = async (data: Omit<Gateway, 'id' | 'isActive' | 'hasPublicKey' | 'hasPrivateKey' | 'createdAt'>) => {
     setIsSaving(true);
     try {
@@ -86,10 +159,15 @@ export default function GatewayPage() {
         const updateData: Record<string, unknown> = {};
         Object.entries(data).forEach(([key, value]) => {
           // Só enviar campos que foram preenchidos
-          if (value !== '' && value !== undefined) {
+          if (value !== '' && value !== undefined && value !== '__REMOVE__') {
             updateData[key] = value;
           }
         });
+
+        // Se o usuário solicitou remover a chave privada
+        if ((data as any).privateKey === '__REMOVE__') {
+          updateData.privateKey = '';
+        }
 
         const res = await fetch(`/api/admin/gateway/${editingGateway.id}`, {
           method: 'PUT',
@@ -306,24 +384,90 @@ export default function GatewayPage() {
 
               {/* Card Header */}
               <div className="mb-3">
-                <h3 className="text-lg font-semibold text-gray-900">{gateway.name}</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900">{gateway.name}</h3>
+                  {gateway.name?.toLowerCase().includes('drop') && (
+                    <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+                      DropPay
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-1 text-sm text-gray-500">
                   <ExternalLink className="w-3 h-3" />
                   {formatUrl(gateway.apiUrl)}
                 </div>
               </div>
 
-              {/* Card Info */}
-              <div className="space-y-1 mb-4 text-sm text-gray-600">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${gateway.hasPrivateKey ? 'bg-green-500' : 'bg-red-500'}`} />
-                  Chave Privada {gateway.hasPrivateKey ? 'configurada' : 'não configurada'}
+              {/* Caixa para trocar ou remover a chave privada */}
+              <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                    <Key className="w-3.5 h-3.5 text-orange-500" />
+                    Chave Privada / Token
+                  </span>
+                  {gateway.hasPrivateKey ? (
+                    <span className="text-[10px] font-medium text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <Lock className="w-2.5 h-2.5 text-emerald-600" /> Ativa no Servidor
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-medium text-red-700 bg-red-100 px-2 py-0.5 rounded-full">
+                      Sem chave
+                    </span>
+                  )}
                 </div>
-                {gateway.endpoint && (
-                  <div className="text-gray-400 text-xs truncate">
-                    Endpoint: {gateway.endpoint}
+
+                {/* Status protegido (Nunca exibe a chave no frontend) */}
+                <div className="px-2.5 py-1.5 bg-white rounded border border-gray-200 text-gray-500 font-mono text-[11px] flex items-center justify-between">
+                  <span>
+                    {gateway.hasPrivateKey ? '••••••••••••••••••••••••••••••••' : 'Nenhuma chave cadastrada'}
+                  </span>
+                  <span className="text-[10px] text-gray-400 font-sans">Protegida no backend</span>
+                </div>
+
+                {/* Input para trocar a chave */}
+                <div>
+                  <div className="relative">
+                    <input
+                      type={showKeyInput[gateway.id] ? 'text' : 'password'}
+                      value={newKeys[gateway.id] || ''}
+                      onChange={(e) => handleKeyInputChange(gateway.id, e.target.value)}
+                      placeholder="Colar nova chave privada..."
+                      className="w-full px-2.5 py-1.5 pr-8 bg-white border border-gray-300 rounded text-xs focus:ring-1 focus:ring-orange-500 focus:border-orange-500 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => toggleShowKey(gateway.id)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      title={showKeyInput[gateway.id] ? 'Ocultar' : 'Exibir'}
+                    >
+                      {showKeyInput[gateway.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
                   </div>
-                )}
+                </div>
+
+                {/* Ações: Salvar / Trocar e Remover */}
+                <div className="flex items-center gap-2 pt-0.5">
+                  <button
+                    onClick={() => handleUpdateKey(gateway.id, gateway.name)}
+                    disabled={isSavingKey[gateway.id] || !newKeys[gateway.id]?.trim()}
+                    className="flex-1 px-2.5 py-1.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded font-medium text-xs transition-colors flex items-center justify-center gap-1 shadow-sm"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    {isSavingKey[gateway.id] ? 'Salvando...' : 'Trocar Chave'}
+                  </button>
+
+                  {gateway.hasPrivateKey && (
+                    <button
+                      onClick={() => handleRemoveKey(gateway)}
+                      disabled={isSavingKey[gateway.id]}
+                      className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded font-medium text-xs transition-colors flex items-center justify-center gap-1"
+                      title="Remover chave privada"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Remover
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Card Actions */}
