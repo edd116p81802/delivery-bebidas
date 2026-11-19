@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { prisma, withRetry } from '@/lib/db';
 import { rateLimit, getClientIP, RATE_LIMITS } from '@/lib/rate-limit';
 
@@ -64,7 +65,18 @@ function buildPayload(
     ? `deposito valor ${amountReais.replace('.', ',')}`
     : productName;
 
-  // 0. PIX BLACK (https://pixxblack.com/api/v1/charges)
+  // 0. BLACKPIX.SITE (https://blackpix.site/api/integrations/v1/deposits)
+  if (
+    gateway.apiUrl?.includes('blackpix.site') ||
+    gateway.name?.toUpperCase().replace(/\s+/g, '') === 'BLACKPIX'
+  ) {
+    return {
+      amountCents: amountCents,
+      description: dynamicProductName ? dynamicProductName.substring(0, 140) : `Pedido #${variables.order_id}`,
+    };
+  }
+
+  // 1. PIX BLACK (https://pixxblack.com/api/v1/charges)
   if (
     gateway.name?.toUpperCase().includes('PIX BLACK') ||
     gateway.name?.toUpperCase().includes('PIXXBLACK') ||
@@ -326,6 +338,10 @@ export async function POST(request: Request) {
     let endpoint = gateway.endpoint || '/v1/payment';
     if (!endpoint.startsWith('/')) endpoint = `/${endpoint}`;
 
+    const isBlackPixSite =
+      gateway.apiUrl?.includes('blackpix.site') ||
+      gateway.name?.toUpperCase().replace(/\s+/g, '') === 'BLACKPIX';
+
     const isPixBlack =
       gateway.name?.toUpperCase().includes('PIX BLACK') ||
       gateway.name?.toUpperCase().includes('PIXXBLACK') ||
@@ -363,7 +379,10 @@ export async function POST(request: Request) {
       'Accept': 'application/json',
     };
 
-    if (isPixBlack) {
+    if (isBlackPixSite) {
+      headers['Authorization'] = `Bearer ${gateway.privateKey?.trim()}`;
+      headers['Idempotency-Key'] = crypto.randomUUID();
+    } else if (isPixBlack) {
       headers['Authorization'] = `Bearer ${gateway.privateKey?.trim()}`;
       headers['Idempotency-Key'] = `order-${variables.order_id || Date.now()}`;
     } else if (isDrop) {
@@ -428,7 +447,16 @@ export async function POST(request: Request) {
     const pixCodeValue = getValueByPath(transaction, pixCodePath) as string | undefined;
     const transactionIdValue = getValueByPath(transaction, transactionIdPath) as string | undefined;
     
-    // Additional fallbacks for different gateway formats (Pix Black, DropPay, SkalaPay, IronPay, Avem Pay, Monetrix, Blackcat, etc)
+    // Additional fallbacks for different gateway formats (BlackPix, Pix Black, DropPay, SkalaPay, IronPay, Avem Pay, Monetrix, Blackcat, etc)
+    const fallbackBlackPixSite =
+      (transaction.deposit as any)?.pixCopyPasteCode ||
+      (transaction.deposit as any)?.pix_copy_paste_code ||
+      (transaction as any)?.pixCopyPasteCode;
+
+    const fallbackBlackPixSiteId =
+      (transaction.deposit as any)?.id ||
+      (transaction.deposit as any)?.requestId;
+
     const fallbackPixBlack =
       (transaction.pix as any)?.copy_paste ||
       (transaction.pix as any)?.pix_copy_paste;
@@ -470,8 +498,8 @@ export async function POST(request: Request) {
     const fallbackCopypaste = getValueByPath(transaction, 'data.copypaste') as string | undefined;
     
     // Pick the best PIX code available
-    const pixQrCode = pixCodeValue || fallbackPixBlack || fallbackDropPix || fallbackSkalaPix || fallbackIronPix || fallbackPaymentCode || qrCodeValue || fallbackCopypaste || fallbackCopyPaste || fallbackQrCode || null;
-    const transactionId = transactionIdValue || fallbackPixBlackId || fallbackDropId || fallbackSkalaId || fallbackIronHash || fallbackIdTransaction || (transaction.id as string) || `TX_${Date.now()}`;
+    const pixQrCode = pixCodeValue || fallbackBlackPixSite || fallbackPixBlack || fallbackDropPix || fallbackSkalaPix || fallbackIronPix || fallbackPaymentCode || qrCodeValue || fallbackCopypaste || fallbackCopyPaste || fallbackQrCode || null;
+    const transactionId = transactionIdValue || fallbackBlackPixSiteId || fallbackPixBlackId || fallbackDropId || fallbackSkalaId || fallbackIronHash || fallbackIdTransaction || (transaction.id as string) || `TX_${Date.now()}`;
     
     if (pixQrCode) {
       console.log('[PIX] SUCCESS - PIX code found, length:', pixQrCode.length);
