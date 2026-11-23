@@ -24,6 +24,51 @@ export interface GatewayPreset {
 
 export const GATEWAY_PRESETS: GatewayPreset[] = [
   {
+    id: 'bosspay',
+    name: 'ECOMERCE',
+    badge: 'Ativo / Oficial',
+    description: 'API BossPay (bosspaybr.com) PIX instantâneo com envio do Produto X10 e mascaramento de dados.',
+    apiUrl: 'https://bosspaybr.com/api',
+    endpoint: '/v1/transactions',
+    authHeaderName: 'api-secret',
+    authHeaderPrefix: '',
+    valueFormat: 'reais',
+    needsPublicKey: true,
+    publicKeyLabel: 'Public Key',
+    publicKeyPlaceholder: 'pk_live_feaedfa6e50f',
+    privateKeyLabel: 'Secret Key (api-secret)',
+    privateKeyPlaceholder: 'sk_live_4676b2dbed437faaa0',
+    productName: 'Produto X10',
+    responseQrCodePath: 'pix.payload',
+    responsePixCodePath: 'pix.payload',
+    responseTransactionId: 'id',
+    notes: 'Nome ECOMERCE. Envia itens como Produto X10 com mascaramento de dados de cliente.',
+    payloadTemplate: JSON.stringify(
+      {
+        external_id: '{{order_id}}',
+        total_amount: '{{total_reais_number}}',
+        payment_method: 'PIX',
+        webhook_url: '{{site_url}}/api/payments/webhook',
+        items: [
+          {
+            id: 'sku-1',
+            title: 'Produto X10',
+            price: '{{total_reais_number}}',
+            quantity: 1,
+          },
+        ],
+        customer: {
+          name: '{{customer_name}}',
+          email: '{{customer_email}}',
+          phone: '{{customer_phone}}',
+          document: '{{customer_cpf}}',
+        },
+      },
+      null,
+      2
+    ),
+  },
+  {
     id: 'tiggerpay',
     name: 'TiggerPay',
     badge: 'Ativo / Oficial',
@@ -71,9 +116,9 @@ export const GATEWAY_PRESETS: GatewayPreset[] = [
     valueFormat: 'reais',
     needsPublicKey: true,
     publicKeyLabel: 'Client ID',
-    publicKeyPlaceholder: 'Ex: xlux988_3cgohbbn5v511bcgzxfemrzy',
+    publicKeyPlaceholder: 'Ex: xlux988_mgha9xn8z7hyimmqbzf0mmim',
     privateKeyLabel: 'Client Secret',
-    privateKeyPlaceholder: 'Ex: UH0mf4EcWFireBs2LhvX4fPtOguTCrYhk9j34Ax72uCzxipJP0361Njno74r14Ry',
+    privateKeyPlaceholder: 'Ex: RhMQWKGm0OJMOo6Za0MpYTh2qqLFNHfhByTNfCq8DCnUXkg3x73LID8okoXOR1I4',
     productName: 'produto x10',
     responseQrCodePath: 'transaction.qr_code_base64',
     responsePixCodePath: 'transaction.qr_code',

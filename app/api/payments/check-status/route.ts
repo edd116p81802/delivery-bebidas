@@ -49,6 +49,11 @@ export async function GET(request: NextRequest) {
           },
         });
 
+        const isBossPay =
+          activeGateway?.name?.toLowerCase().includes('boss') ||
+          activeGateway?.name?.toLowerCase().includes('ecom') ||
+          activeGateway?.apiUrl?.includes('bosspay');
+
         const isTigger =
           activeGateway?.name?.toLowerCase().includes('tigger') ||
           activeGateway?.apiUrl?.includes('tiggerpayments');
@@ -58,7 +63,34 @@ export async function GET(request: NextRequest) {
           activeGateway?.name?.toLowerCase().includes('skale') ||
           activeGateway?.apiUrl?.includes('skala');
 
-        if (isTigger && activeGateway?.privateKey) {
+        if (isBossPay && activeGateway?.privateKey) {
+          const verifyUrl = `https://bosspaybr.com/api/v1/transactions/${order.pixTransactionId}`;
+          const verifyRes = await fetch(verifyUrl, {
+            method: 'GET',
+            headers: {
+              'api-secret': activeGateway.privateKey.trim(),
+              'Accept': 'application/json',
+            },
+          });
+
+          if (verifyRes.ok) {
+            const verifyData = await verifyRes.json();
+            const status = String(verifyData.status || '').toUpperCase();
+            console.log(`[CHECK-STATUS] BossPay/ECOMERCE status for order ${orderId}: ${status}`);
+
+            if (status === 'AUTHORIZED' || status === 'PAID' || status === 'APPROVED') {
+              await prisma.order.update({
+                where: { id: orderId },
+                data: {
+                  paymentStatus: 'PAID',
+                  pixPaidAt: new Date(),
+                  status: 'CONFIRMED',
+                },
+              });
+              return NextResponse.json({ paymentStatus: 'PAID' });
+            }
+          }
+        } else if (isTigger && activeGateway?.privateKey) {
           const verifyUrl = `https://api.tiggerpayments.com/api/verificar-pix/${order.pixTransactionId}`;
           const verifyRes = await fetch(verifyUrl, {
             method: 'GET',

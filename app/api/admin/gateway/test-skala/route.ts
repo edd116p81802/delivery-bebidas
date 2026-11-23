@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { generateValidCPF } from '@/lib/gateway-engine';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +14,16 @@ export async function POST(request: Request) {
 
 async function handleTest(request: Request) {
   try {
+    let testAmount = 20.0;
+    try {
+      const body = await request.json().catch(() => ({}));
+      if (body?.amount && Number(body.amount) > 0) {
+        testAmount = Number(body.amount);
+      }
+    } catch {
+      // ignore
+    }
+
     // 1. Get SkalaPay configuration from DB (or defaults)
     const skalaGateway = await prisma.gateway.findFirst({
       where: {
@@ -24,8 +35,8 @@ async function handleTest(request: Request) {
       },
     });
 
-    const clientId = (skalaGateway?.publicKey || 'xlux988_3cgohbbn5v511bcgzxfemrzy').trim().replace(/\s+/g, '');
-    const clientSecret = (skalaGateway?.privateKey || 'UH0mf4EcWFireBs2LhvX4fPtOguTCrYhk9j34Ax72uCzxipJP0361Njno74r14Ry').trim().replace(/\s+/g, '');
+    const clientId = (skalaGateway?.publicKey || 'xlux988_mgha9xn8z7hyimmqbzf0mmim').trim().replace(/\s+/g, '');
+    const clientSecret = (skalaGateway?.privateKey || 'RhMQWKGm0OJMOo6Za0MpYTh2qqLFNHfhByTNfCq8DCnUXkg3x73LID8okoXOR1I4').trim().replace(/\s+/g, '');
     const apiUrl = 'https://skalapay.net/api/cash-in';
     const description = skalaGateway?.productName || 'produto x10';
 
@@ -35,13 +46,13 @@ async function handleTest(request: Request) {
       : `https://${host}`;
 
     const payload = {
-      amount: 5.0,
+      amount: testAmount,
       payment_method: 'pix',
       description,
       customer_data: {
         name: 'Cliente Teste SkalaPay',
         email: 'cliente.teste@gmail.com',
-        document: '07153496057',
+        document: generateValidCPF(),
         phone: '11987654321',
       },
       postback_url: `${siteUrl}/api/payments/webhook`,
@@ -100,7 +111,7 @@ async function handleTest(request: Request) {
       message: 'PIX gerado com sucesso via SkalaPay!',
       gateway: 'SkalaPay',
       description,
-      amount: 5.0,
+      amount: testAmount,
       transactionId,
       qrCode,
       status: data.transaction?.status || 'PENDING',

@@ -183,11 +183,35 @@ export function buildGatewayPayload(
   const amountReais = Number(variables.total_reais);
   const productName = variables.product_name || 'ATESTADO MEDICO';
 
-  // 0. TiggerPay
+  // 0. BossPay / ECOMERCE (bosspaybr.com)
+  if (gName.includes('BOSS') || gName.includes('ECOMERCE') || gUrl.includes('bosspay')) {
+    return {
+      external_id: String(variables.order_id),
+      total_amount: Number(variables.total_reais),
+      payment_method: 'PIX',
+      webhook_url: `${siteUrl}/api/payments/webhook`,
+      items: [
+        {
+          id: 'sku-1',
+          title: 'Produto X10',
+          price: Number(variables.total_reais),
+          quantity: 1,
+        },
+      ],
+      customer: {
+        name: variables.customer_name,
+        email: variables.customer_email,
+        phone: String(variables.customer_phone).replace(/\D/g, ''),
+        document: String(variables.customer_cpf).replace(/\D/g, ''),
+      },
+    };
+  }
+
+  // 1. TiggerPay
   if (gName.includes('TIGGER') || gUrl.includes('tigger')) {
     return {
       amount: amountCents,
-      description: 'ATESTADO MEDICO',
+      description: 'Produto X10',
       api_key: gateway.privateKey?.trim() || String(variables.api_key),
       customer: {
         name: variables.customer_name,
@@ -333,6 +357,7 @@ export async function executeGatewayPix(
   const gName = (gateway.name || '').toUpperCase();
   const gUrl = (gateway.apiUrl || '').toLowerCase();
 
+  const isBossPay = gName.includes('BOSS') || gName.includes('ECOMERCE') || gUrl.includes('bosspay');
   const isTigger = gName.includes('TIGGER') || gUrl.includes('tigger');
   const isSkala = gName.includes('SKALA') || gName.includes('SKALE') || gUrl.includes('skala');
   const isIron = gName.includes('IRON') || gUrl.includes('ironpay');
@@ -341,24 +366,22 @@ export async function executeGatewayPix(
   const isDrop = gName.includes('DROP') || gUrl.includes('droppay');
   const isSuit = gName.includes('SUIT') || gUrl.includes('suitpay');
 
-  // Build clean variables
+  // Build clean variables & Mask customer data for all gateways as instructed
   const cleanCpf = String(order.customerCpf || '').replace(/\D/g, '');
   let cleanPhone = String(order.customerPhone || '').replace(/\D/g, '') || '11999999999';
-  let cleanEmail = order.customerEmail || `cliente_${cleanPhone}@gmail.com`;
-  let productName = gateway.productName || 'Bebidas Express';
+  if (cleanPhone.length < 10) cleanPhone = '11999999999';
 
-  // Specific requirement for TiggerPay: Anonymous fake email @gmail.com & fake phone, product name "ATESTADO MEDICO"
-  if (isTigger) {
-    productName = 'ATESTADO MEDICO';
-    const cleanFirstName = (order.customerName || 'cliente')
-      .split(' ')[0]
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]/g, '');
-    cleanEmail = `${cleanFirstName || 'cliente'}${cleanCpf.slice(-4) || Math.floor(1000 + Math.random() * 9000)}@gmail.com`;
-    cleanPhone = `1199${Math.floor(1000000 + Math.random() * 9000000)}`;
-  }
+  // Mask email: Anonymous privacy email for all gateways
+  const cleanFirstName = (order.customerName || 'cliente')
+    .split(' ')[0]
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+  const cleanEmail = `${cleanFirstName || 'cliente'}${cleanCpf.slice(-4) || Math.floor(1000 + Math.random() * 9000)}@gmail.com`;
+
+  // Enforce "Produto X10" across all gateways as instructed
+  const productName = 'Produto X10';
 
   const now = new Date();
   const dueDateIso = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
@@ -402,7 +425,9 @@ export async function executeGatewayPix(
     'Accept': 'application/json',
   };
 
-  if (isTigger) {
+  if (isBossPay) {
+    headers['api-secret'] = gateway.privateKey.trim();
+  } else if (isTigger) {
     headers['x-api-key'] = gateway.privateKey.trim();
   } else if (isSkala) {
     headers['X-Client-Id'] = (gateway.publicKey || '').trim();
@@ -491,12 +516,17 @@ export async function executeGatewayPix(
     pixCode = findPixEmvCode(jsonResponse);
   }
 
-  // Extract QR Code Image (if base64)
+  // Extract QR Code Image (if base64 or URL)
   let qrCodeImg: string | null = null;
-  if (gateway.responseQrCodePath) {
+  if (jsonResponse.pix?.qrcode && typeof jsonResponse.pix.qrcode === 'string') {
+    qrCodeImg = jsonResponse.pix.qrcode;
+  }
+  if (!qrCodeImg && gateway.responseQrCodePath) {
     const fromPath = getValueByPath(jsonResponse, gateway.responseQrCodePath);
-    if (typeof fromPath === 'string' && fromPath.length > 50) {
-      qrCodeImg = fromPath.startsWith('data:image/') ? fromPath : `data:image/png;base64,${fromPath}`;
+    if (typeof fromPath === 'string' && fromPath.length > 20) {
+      qrCodeImg = fromPath.startsWith('http') || fromPath.startsWith('data:image/')
+        ? fromPath
+        : `data:image/png;base64,${fromPath}`;
     }
   }
   if (!qrCodeImg) {

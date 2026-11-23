@@ -22,15 +22,17 @@ export async function POST(request: NextRequest) {
 
     const externalRef =
       body.external_id ||
+      body.externalId ||
       body.externalRef ||
       body.orderId ||
       body.order_id ||
       body.externalReference ||
       (body.metadata && body.metadata.order_id) ||
-      (body.data && (body.data.external_id || body.data.externalRef || body.data.orderId || body.data.order_id));
+      (body.data && (body.data.external_id || body.data.externalId || body.data.externalRef || body.data.orderId || body.data.order_id));
 
     const rawStatus = String(
       body.status ||
+      body.event ||
       body.payment_status ||
       body.paymentStatus ||
       (body.data && (body.data.status || body.data.payment_status)) ||
@@ -57,7 +59,14 @@ export async function POST(request: NextRequest) {
 
     let paymentStatus: 'PENDING' | 'PROCESSING' | 'PAID' | 'EXPIRED' | 'CANCELLED' | 'FAILED' = 'PROCESSING';
     
-    if (rawStatus === 'approved' || rawStatus === 'paid' || rawStatus === 'completed' || rawStatus === 'success') {
+    if (
+      rawStatus === 'approved' ||
+      rawStatus === 'authorized' ||
+      rawStatus === 'transaction_paid' ||
+      rawStatus === 'paid' ||
+      rawStatus === 'completed' ||
+      rawStatus === 'success'
+    ) {
       paymentStatus = 'PAID';
     } else if (rawStatus === 'expired') {
       paymentStatus = 'EXPIRED';
