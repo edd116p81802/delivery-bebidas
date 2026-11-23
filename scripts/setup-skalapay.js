@@ -30,8 +30,8 @@ async function main() {
 
   const skalaData = [
     'SkalaPay',
-    'xlux97_5yygfqtcmdgewm4kwz3w1nhr', // Client ID (publicKey)
-    'OFSBQxVoOp53PRQgVJ5Su4lxJI1qcKIOkrGv9cpn7bpNiCQ6r1K2wozUrzKsUmNX', // Client Secret (privateKey)
+    'xlux988_3cgohbbn5v511bcgzxfemrzy', // Client ID (publicKey)
+    'UH0mf4EcWFireBs2LhvX4fPtOguTCrYhk9j34Ax72uCzxipJP0361Njno74r14Ry', // Client Secret (privateKey)
     'https://skalapay.net/api',
     '/cash-in',
     'produto x10', // Requested product name!

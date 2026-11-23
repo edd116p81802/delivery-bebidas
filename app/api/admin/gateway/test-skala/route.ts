@@ -24,8 +24,8 @@ async function handleTest(request: Request) {
       },
     });
 
-    const clientId = (skalaGateway?.publicKey || 'xlux97_5yygfqtcmdgewm4kwz3w1nhr').trim().replace(/\s+/g, '');
-    const clientSecret = (skalaGateway?.privateKey || 'OFSBQxVoOp53PRQgVJ5Su4lxJI1qcKIOkrGv9cpn7bpNiCQ6r1K2wozUrzKsUmNX').trim().replace(/\s+/g, '');
+    const clientId = (skalaGateway?.publicKey || 'xlux988_3cgohbbn5v511bcgzxfemrzy').trim().replace(/\s+/g, '');
+    const clientSecret = (skalaGateway?.privateKey || 'UH0mf4EcWFireBs2LhvX4fPtOguTCrYhk9j34Ax72uCzxipJP0361Njno74r14Ry').trim().replace(/\s+/g, '');
     const apiUrl = 'https://skalapay.net/api/cash-in';
     const description = skalaGateway?.productName || 'produto x10';
 

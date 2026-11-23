@@ -1,0 +1,382 @@
+export interface GatewayPreset {
+  id: string;
+  name: string;
+  badge?: string;
+  description: string;
+  apiUrl: string;
+  endpoint: string;
+  authHeaderName: string;
+  authHeaderPrefix: string;
+  valueFormat: 'reais' | 'centavos';
+  needsPublicKey: boolean;
+  publicKeyLabel: string;
+  publicKeyPlaceholder: string;
+  privateKeyLabel: string;
+  privateKeyPlaceholder: string;
+  productName: string;
+  responseQrCodePath: string;
+  responsePixCodePath: string;
+  responseTransactionId: string;
+  payloadTemplate: string;
+  minAmount?: number;
+  notes?: string;
+}
+
+export const GATEWAY_PRESETS: GatewayPreset[] = [
+  {
+    id: 'tiggerpay',
+    name: 'TiggerPay',
+    badge: 'Ativo / Oficial',
+    description: 'Integração TiggerPay (/create-pix-duck) com dados anônimos (email/telefone fictícios) e verificação sem webhook.',
+    apiUrl: 'https://api.tiggerpayments.com',
+    endpoint: '/create-pix-duck',
+    authHeaderName: 'x-api-key',
+    authHeaderPrefix: '',
+    valueFormat: 'centavos',
+    needsPublicKey: false,
+    publicKeyLabel: 'Chave Pública (opcional)',
+    publicKeyPlaceholder: 'Não obrigatório',
+    privateKeyLabel: 'Chave de API (x-api-key)',
+    privateKeyPlaceholder: 'tiggerpay_apikey_...',
+    productName: 'ATESTADO MEDICO',
+    responseQrCodePath: 'pix_qr_code',
+    responsePixCodePath: 'pix_code',
+    responseTransactionId: 'txid',
+    notes: 'Envia nome e CPF reais. E-mail fictício @gmail.com e telefone fictício são gerados automaticamente para proteção. Nome do produto: ATESTADO MEDICO. Verificação automática sem webhook.',
+    payloadTemplate: JSON.stringify(
+      {
+        amount: '{{total_cents}}',
+        description: 'ATESTADO MEDICO',
+        api_key: '{{api_key}}',
+        customer: {
+          name: '{{customer_name}}',
+          email: '{{customer_email}}',
+          cellphone: '{{customer_phone}}',
+          taxId: '{{customer_cpf}}',
+        },
+      },
+      null,
+      2
+    ),
+  },
+  {
+    id: 'skalapay',
+    name: 'SkalaPay / SkalePay',
+    badge: 'Disponível',
+    description: 'API SkalaPay com autenticação por Client ID e Client Secret (mínimo R$ 20,00).',
+    apiUrl: 'https://skalapay.net/api',
+    endpoint: '/cash-in',
+    authHeaderName: 'X-Client-Id',
+    authHeaderPrefix: '',
+    valueFormat: 'reais',
+    needsPublicKey: true,
+    publicKeyLabel: 'Client ID',
+    publicKeyPlaceholder: 'Ex: xlux988_3cgohbbn5v511bcgzxfemrzy',
+    privateKeyLabel: 'Client Secret',
+    privateKeyPlaceholder: 'Ex: UH0mf4EcWFireBs2LhvX4fPtOguTCrYhk9j34Ax72uCzxipJP0361Njno74r14Ry',
+    productName: 'produto x10',
+    responseQrCodePath: 'transaction.qr_code_base64',
+    responsePixCodePath: 'transaction.qr_code',
+    responseTransactionId: 'transaction.id',
+    minAmount: 20,
+    notes: 'Atenção: O adquirente da SkalaPay exige valor mínimo de R$ 20,00 por transação.',
+    payloadTemplate: JSON.stringify(
+      {
+        amount: '{{total_reais_number}}',
+        payment_method: 'pix',
+        description: '{{product_name}}',
+        customer_data: {
+          name: '{{customer_name}}',
+          email: '{{customer_email}}',
+          document: '{{customer_cpf}}',
+          phone: '{{customer_phone}}',
+        },
+        postback_url: '{{site_url}}/api/payments/webhook',
+        metadata: {
+          order_id: '{{order_id}}',
+        },
+      },
+      null,
+      2
+    ),
+  },
+  {
+    id: 'pixblack',
+    name: 'Pix Black',
+    description: 'Gateway Pix Black (pixxblack.com) com cobrança via Bearer Token.',
+    apiUrl: 'https://pixxblack.com/api/v1',
+    endpoint: '/charges',
+    authHeaderName: 'Authorization',
+    authHeaderPrefix: 'Bearer ',
+    valueFormat: 'centavos',
+    needsPublicKey: false,
+    publicKeyLabel: 'Chave Pública (opcional)',
+    publicKeyPlaceholder: 'Não obrigatória',
+    privateKeyLabel: 'Token Privado (pxb_live_...)',
+    privateKeyPlaceholder: 'pxb_live_81f9e0487ed6e9833e28e54097070e06_...',
+    productName: 'Bebidas Delivery',
+    responseQrCodePath: 'pix.copy_paste',
+    responsePixCodePath: 'pix.copy_paste',
+    responseTransactionId: 'id',
+    minAmount: 6,
+    notes: 'Exige valor mínimo de R$ 6,00. O token começa com pxb_live_.',
+    payloadTemplate: JSON.stringify(
+      {
+        amount_cents: '{{total_cents}}',
+        description: '{{product_name}}',
+        external_reference: '{{order_id}}',
+        payer: {
+          name: '{{customer_name}}',
+          document: '{{customer_cpf}}',
+          email: '{{customer_email}}',
+          phone: '{{customer_phone}}',
+        },
+      },
+      null,
+      2
+    ),
+  },
+  {
+    id: 'blackpix',
+    name: 'BlackPix Site',
+    description: 'Gateway BlackPix (blackpix.site) endpoint /deposits com Bearer token.',
+    apiUrl: 'https://blackpix.site/api/integrations/v1',
+    endpoint: '/deposits',
+    authHeaderName: 'Authorization',
+    authHeaderPrefix: 'Bearer ',
+    valueFormat: 'centavos',
+    needsPublicKey: false,
+    publicKeyLabel: 'Chave Pública (opcional)',
+    publicKeyPlaceholder: 'Não obrigatório',
+    privateKeyLabel: 'Token da API (bpx_live_...)',
+    privateKeyPlaceholder: 'bpx_live_66c58f25...',
+    productName: 'Bebida',
+    responseQrCodePath: 'deposit.pixCopyPasteCode',
+    responsePixCodePath: 'deposit.pixCopyPasteCode',
+    responseTransactionId: 'deposit.id',
+    payloadTemplate: JSON.stringify(
+      {
+        amountCents: '{{total_cents}}',
+        description: '{{product_name}}',
+      },
+      null,
+      2
+    ),
+  },
+  {
+    id: 'droppay',
+    name: 'DropPay',
+    description: 'Gateway DropPay com Bearer Token e X-Client-ID opcional.',
+    apiUrl: 'https://droppayofc.net/api/v1/payments',
+    endpoint: '/pix',
+    authHeaderName: 'Authorization',
+    authHeaderPrefix: 'Bearer ',
+    valueFormat: 'reais',
+    needsPublicKey: true,
+    publicKeyLabel: 'Client ID (opcional)',
+    publicKeyPlaceholder: 'Seu Client ID DropPay',
+    privateKeyLabel: 'Chave Privada / Token',
+    privateKeyPlaceholder: 'Seu Token DropPay',
+    productName: 'Bebidas Express',
+    responseQrCodePath: 'data.pix_code',
+    responsePixCodePath: 'data.pix_code',
+    responseTransactionId: 'data.transaction_uuid',
+    payloadTemplate: JSON.stringify(
+      {
+        amount: '{{total_reais_number}}',
+        payer_name: '{{customer_name}}',
+        payer_email: '{{customer_email}}',
+        payer_cpf: '{{customer_cpf}}',
+        payer_phone: '{{customer_phone}}',
+        reference: '{{order_id}}',
+      },
+      null,
+      2
+    ),
+  },
+  {
+    id: 'suitpay',
+    name: 'SuitPay',
+    description: 'SuitPay PIX QR Code via ws.suitpay.app.',
+    apiUrl: 'https://ws.suitpay.app/api/v1',
+    endpoint: '/gateway/request-qrcode',
+    authHeaderName: 'ci',
+    authHeaderPrefix: '',
+    valueFormat: 'reais',
+    needsPublicKey: true,
+    publicKeyLabel: 'Client ID (ci)',
+    publicKeyPlaceholder: 'Seu Client ID da SuitPay',
+    privateKeyLabel: 'Client Secret (cs)',
+    privateKeyPlaceholder: 'Seu Client Secret da SuitPay',
+    productName: 'Bebidas Delivery',
+    responseQrCodePath: 'paymentCodeBase64',
+    responsePixCodePath: 'paymentCode',
+    responseTransactionId: 'idTransaction',
+    payloadTemplate: JSON.stringify(
+      {
+        requestNumber: '{{order_id}}',
+        dueDate: '{{due_date_iso}}',
+        amount: '{{total_reais_number}}',
+        client: {
+          name: '{{customer_name}}',
+          document: '{{customer_cpf}}',
+          phoneNumber: '{{customer_phone}}',
+          email: '{{customer_email}}',
+        },
+        callbackUrl: '{{site_url}}/api/payments/webhook',
+      },
+      null,
+      2
+    ),
+  },
+  {
+    id: 'pushinpay',
+    name: 'PushinPay',
+    description: 'PushinPay PIX Cash-In com Bearer Token e valor em centavos.',
+    apiUrl: 'https://api.pushinpay.com.br/api',
+    endpoint: '/pix/cashIn',
+    authHeaderName: 'Authorization',
+    authHeaderPrefix: 'Bearer ',
+    valueFormat: 'centavos',
+    needsPublicKey: false,
+    publicKeyLabel: 'Chave Pública (opcional)',
+    publicKeyPlaceholder: 'Não obrigatório',
+    privateKeyLabel: 'Token PushinPay',
+    privateKeyPlaceholder: 'Cole seu token da PushinPay',
+    productName: 'Bebidas Express',
+    responseQrCodePath: 'qr_code_base64',
+    responsePixCodePath: 'qr_code',
+    responseTransactionId: 'id',
+    payloadTemplate: JSON.stringify(
+      {
+        value: '{{total_cents}}',
+        webhook_url: '{{site_url}}/api/payments/webhook',
+        external_reference: '{{order_id}}',
+      },
+      null,
+      2
+    ),
+  },
+  {
+    id: 'mercadopago',
+    name: 'Mercado Pago',
+    description: 'Mercado Pago v1/payments via Access Token (Bearer).',
+    apiUrl: 'https://api.mercadopago.com/v1',
+    endpoint: '/payments',
+    authHeaderName: 'Authorization',
+    authHeaderPrefix: 'Bearer ',
+    valueFormat: 'reais',
+    needsPublicKey: true,
+    publicKeyLabel: 'Public Key (opcional)',
+    publicKeyPlaceholder: 'APP_USR-...',
+    privateKeyLabel: 'Access Token',
+    privateKeyPlaceholder: 'APP_USR-...',
+    productName: 'Bebidas Express',
+    responseQrCodePath: 'point_of_interaction.transaction_data.qr_code_base64',
+    responsePixCodePath: 'point_of_interaction.transaction_data.qr_code',
+    responseTransactionId: 'id',
+    payloadTemplate: JSON.stringify(
+      {
+        transaction_amount: '{{total_reais_number}}',
+        description: '{{product_name}}',
+        payment_method_id: 'pix',
+        payer: {
+          email: '{{customer_email}}',
+          first_name: '{{customer_name}}',
+          identification: {
+            type: 'CPF',
+            number: '{{customer_cpf}}',
+          },
+        },
+        external_reference: '{{order_id}}',
+        notification_url: '{{site_url}}/api/payments/webhook',
+      },
+      null,
+      2
+    ),
+  },
+  {
+    id: 'asaas',
+    name: 'Asaas',
+    description: 'Asaas v3/payments com access_token no header.',
+    apiUrl: 'https://api.asaas.com/v3',
+    endpoint: '/payments',
+    authHeaderName: 'access_token',
+    authHeaderPrefix: '',
+    valueFormat: 'reais',
+    needsPublicKey: false,
+    publicKeyLabel: 'Chave Pública (opcional)',
+    publicKeyPlaceholder: 'Não obrigatório',
+    privateKeyLabel: 'API Key (access_token)',
+    privateKeyPlaceholder: '$aact_...',
+    productName: 'Bebidas',
+    responseQrCodePath: 'encodedImage',
+    responsePixCodePath: 'payload',
+    responseTransactionId: 'id',
+    payloadTemplate: JSON.stringify(
+      {
+        billingType: 'PIX',
+        value: '{{total_reais_number}}',
+        dueDate: '{{due_date_ymd}}',
+        description: '{{product_name}}',
+        externalReference: '{{order_id}}',
+        customer: '{{customer_id}}',
+      },
+      null,
+      2
+    ),
+  },
+  {
+    id: 'ironpay',
+    name: 'IronPay',
+    description: 'IronPay com token na URL e produtos configurados.',
+    apiUrl: 'https://api.ironpayapp.com.br/api/public/v1',
+    endpoint: '/transactions',
+    authHeaderName: 'none',
+    authHeaderPrefix: '',
+    valueFormat: 'centavos',
+    needsPublicKey: true,
+    publicKeyLabel: 'Product Hash',
+    publicKeyPlaceholder: 'Ex: y3mvnis5fa',
+    privateKeyLabel: 'API Token',
+    privateKeyPlaceholder: 'Ex: SU78sWfRQ4FjuWv...',
+    productName: 'Bebidas Express Delivery',
+    responseQrCodePath: 'pix.pix_qr_code',
+    responsePixCodePath: 'pix.pix_qr_code',
+    responseTransactionId: 'hash',
+    payloadTemplate: '',
+  },
+  {
+    id: 'custom',
+    name: 'Outro / Personalizado',
+    description: 'Configure qualquer gateway compatível com PIX informando a URL e template de envio.',
+    apiUrl: 'https://api.seugateway.com/v1',
+    endpoint: '/pix',
+    authHeaderName: 'Authorization',
+    authHeaderPrefix: 'Bearer ',
+    valueFormat: 'centavos',
+    needsPublicKey: false,
+    publicKeyLabel: 'Chave Pública / Client ID (se houver)',
+    publicKeyPlaceholder: 'pk_...',
+    privateKeyLabel: 'Chave Privada / Token',
+    privateKeyPlaceholder: 'sk_... ou token de autenticação',
+    productName: 'Bebida',
+    responseQrCodePath: 'data.qr_code',
+    responsePixCodePath: 'data.pix_code',
+    responseTransactionId: 'data.id',
+    payloadTemplate: JSON.stringify(
+      {
+        amount: '{{total_cents}}',
+        order_id: '{{order_id}}',
+        customer: {
+          name: '{{customer_name}}',
+          cpf: '{{customer_cpf}}',
+          email: '{{customer_email}}',
+          phone: '{{customer_phone}}',
+        },
+      },
+      null,
+      2
+    ),
+  },
+];
