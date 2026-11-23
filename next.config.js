@@ -10,6 +10,15 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: { unoptimized: true },
+  async redirects() {
+    return [
+      {
+        source: '/admin/gate',
+        destination: '/admin/gateway',
+        permanent: true,
+      },
+    ];
+  },
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.output.filename = 'static/chunks/[name]-[contenthash:8].js';
