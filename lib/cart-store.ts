@@ -92,6 +92,16 @@ export const useCartStore = create<CartStore>()(
       },
 
       getDeliveryFee: () => {
+        const items = get().items;
+        const hasFreeDelivery = items.some(
+          (item) =>
+            item.id === 'prod_teste_pix_2reais' ||
+            item.name?.toLowerCase().includes('frete grátis') ||
+            item.name?.toLowerCase().includes('frete gratis') ||
+            item.name?.toLowerCase().includes('teste pix')
+        );
+        if (hasFreeDelivery) return 0;
+
         const subtotal = get().getSubtotal();
         return subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
       },

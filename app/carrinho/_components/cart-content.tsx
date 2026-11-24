@@ -13,6 +13,8 @@ export function CartContent() {
   const updateQuantity = useCartStore((state) => state?.updateQuantity);
   const removeItem = useCartStore((state) => state?.removeItem);
   const getSubtotal = useCartStore((state) => state?.getSubtotal);
+  const getDeliveryFee = useCartStore((state) => state?.getDeliveryFee);
+  const getTotal = useCartStore((state) => state?.getTotal);
 
   useEffect(() => {
     setMounted(true);
@@ -33,8 +35,8 @@ export function CartContent() {
   }
 
   const subtotal = getSubtotal?.() ?? 0;
-  const deliveryFee = subtotal >= 29.90 ? 0 : 5.0;
-  const total = subtotal + deliveryFee;
+  const deliveryFee = getDeliveryFee?.() ?? (subtotal >= 29.90 ? 0 : 5.0);
+  const total = getTotal?.() ?? (subtotal + deliveryFee);
 
   if ((items ?? []).length === 0) {
     return (

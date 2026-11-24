@@ -16,6 +16,8 @@ export function CheckoutForm() {
   
   const items = useCartStore((state) => state?.items ?? []);
   const getSubtotal = useCartStore((state) => state?.getSubtotal);
+  const getDeliveryFee = useCartStore((state) => state?.getDeliveryFee);
+  const getTotal = useCartStore((state) => state?.getTotal);
   const clearCart = useCartStore((state) => state?.clearCart);
 
   const [form, setForm] = useState({
@@ -77,8 +79,8 @@ export function CheckoutForm() {
     setLoading(true);
     try {
       const subtotal = getSubtotal?.() ?? 0;
-      const deliveryFee = subtotal >= 29.90 ? 0 : 5.0;
-      const total = subtotal + deliveryFee;
+      const deliveryFee = getDeliveryFee?.() ?? (subtotal >= 29.90 ? 0 : 5.0);
+      const total = getTotal?.() ?? (subtotal + deliveryFee);
 
       const response = await fetch("/api/orders", {
         method: "POST",
@@ -122,8 +124,8 @@ export function CheckoutForm() {
   }
 
   const subtotal = getSubtotal?.() ?? 0;
-  const deliveryFee = subtotal >= 29.90 ? 0 : 5.0;
-  const total = subtotal + deliveryFee;
+  const deliveryFee = getDeliveryFee?.() ?? (subtotal >= 29.90 ? 0 : 5.0);
+  const total = getTotal?.() ?? (subtotal + deliveryFee);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
