@@ -1,11 +1,12 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
-import { Beer, Package, ShoppingCart, LogOut, Menu, X, Home, LayoutGrid, ChevronDown } from 'lucide-react';
+import { Beer, Package, ShoppingCart, LogOut, Menu, X, Home, LayoutGrid, ChevronDown, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { openCustomerWhatsApp } from '@/lib/whatsapp';
 
 interface OrdersAdminProps {
   orders: {
@@ -17,6 +18,7 @@ interface OrdersAdminProps {
     total: number;
     status: string;
     paymentMethod: string;
+    items?: any[];
     createdAt: string;
   }[];
 }
@@ -137,9 +139,36 @@ export function OrdersAdmin({ orders }: OrdersAdminProps) {
                   {(orders ?? [])?.map?.((order) => (
                     <tr key={order?.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
-                        <div>
-                          <p className="font-medium text-sm">{order?.customerName}</p>
-                          <p className="text-xs text-gray-500">{order?.customerPhone}</p>
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <p className="font-medium text-sm">{order?.customerName}</p>
+                            <button
+                              onClick={() => openCustomerWhatsApp({
+                                phone: order.customerPhone,
+                                name: order.customerName,
+                                address: order.address,
+                                items: order.items,
+                              })}
+                              className="text-xs text-gray-500 hover:text-green-600 hover:underline text-left block"
+                              title="Abrir WhatsApp"
+                            >
+                              {order?.customerPhone}
+                            </button>
+                          </div>
+                          {order?.customerPhone && (
+                            <button
+                              onClick={() => openCustomerWhatsApp({
+                                phone: order.customerPhone,
+                                name: order.customerName,
+                                address: order.address,
+                                items: order.items,
+                              })}
+                              className="p-1.5 bg-green-500 hover:bg-green-600 text-white rounded-md transition-colors"
+                              title="Conversar no WhatsApp"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 font-bold text-amber-600">R$ {(order?.total ?? 0)?.toFixed?.(2)?.replace?.('.', ',')}</td>

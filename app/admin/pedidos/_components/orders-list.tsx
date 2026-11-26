@@ -12,8 +12,10 @@ import {
   Truck,
   Package,
   Eye,
+  MessageCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { openCustomerWhatsApp } from "@/lib/whatsapp";
 
 const statusLabels: Record<string, { label: string; color: string; icon: any }> = {
   PENDING: { label: "Pendente", color: "bg-amber-100 text-amber-700", icon: Clock },
@@ -125,7 +127,27 @@ export function OrdersList() {
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <p className="font-semibold text-gray-900">{order?.customerName ?? 'Cliente'}</p>
-                    <p className="text-sm text-gray-500">{order?.customerPhone ?? ''}</p>
+                    {order?.customerPhone ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openCustomerWhatsApp({
+                            phone: order.customerPhone,
+                            name: order.customerName,
+                            address: order.address,
+                            items: order.items,
+                          });
+                        }}
+                        className="text-sm text-gray-500 hover:text-green-600 hover:underline flex items-center gap-1"
+                        title="Abrir WhatsApp"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5 text-green-500" />
+                        {order.customerPhone}
+                      </button>
+                    ) : (
+                      <p className="text-sm text-gray-500">-</p>
+                    )}
                   </div>
                   <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${statusInfo.color}`}>
                     <StatusIcon className="w-4 h-4 mr-1" />
@@ -178,7 +200,25 @@ export function OrdersList() {
               <div>
                 <p className="text-sm text-gray-500">Cliente</p>
                 <p className="font-medium">{selectedOrder?.customerName ?? 'Cliente'}</p>
-                <p className="text-sm text-gray-600">{selectedOrder?.customerPhone ?? ''}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-sm text-gray-600">{selectedOrder?.customerPhone ?? ''}</p>
+                  {selectedOrder?.customerPhone && (
+                    <button
+                      type="button"
+                      onClick={() => openCustomerWhatsApp({
+                        phone: selectedOrder.customerPhone,
+                        name: selectedOrder.customerName,
+                        address: selectedOrder.address,
+                        items: selectedOrder.items,
+                      })}
+                      className="px-2 py-0.5 bg-green-500 hover:bg-green-600 text-white rounded text-xs flex items-center gap-1 transition-colors"
+                      title="Abrir WhatsApp"
+                    >
+                      <MessageCircle className="w-3 h-3" />
+                      WhatsApp
+                    </button>
+                  )}
+                </div>
                 {selectedOrder?.customerEmail && (
                   <p className="text-sm text-gray-600">{selectedOrder.customerEmail}</p>
                 )}

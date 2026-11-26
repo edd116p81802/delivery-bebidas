@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { DollarSign, CreditCard, QrCode, ShoppingCart, TrendingUp, FolderTree, Trash2, AlertTriangle, ChevronRight, User, Phone, Mail, Search, Filter, MessageCircle, Eye, ChevronLeft, X, MapPin, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
+import { openCustomerWhatsApp } from '@/lib/whatsapp';
 
 interface Cliente {
   id: string;
@@ -172,10 +173,17 @@ export default function DashboardClient() {
     return cpf;
   };
 
-  const openWhatsApp = (phone: string) => {
-    const cleaned = phone.replace(/\D/g, '');
-    const phoneWithCountry = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
-    window.open(`https://wa.me/${phoneWithCountry}?text=Olá`, '_blank');
+  const openWhatsApp = (cliente: Cliente | string) => {
+    if (typeof cliente === 'string') {
+      openCustomerWhatsApp({ phone: cliente });
+    } else {
+      openCustomerWhatsApp({
+        phone: cliente.telefone,
+        name: cliente.nome,
+        address: cliente.endereco,
+        items: cliente.items,
+      });
+    }
   };
 
   if (loading) {
@@ -385,7 +393,13 @@ export default function DashboardClient() {
                     {/* Cliente com endereço */}
                     <td className="px-3 py-1.5">
                       <p className="font-semibold text-gray-900 text-sm truncate max-w-[200px]">{cliente.nome}</p>
-                      <p className="text-gray-400 text-[11px]">{formatPhone(cliente.telefone)}</p>
+                      <button
+                        onClick={() => openWhatsApp(cliente)}
+                        className="text-gray-400 text-[11px] hover:text-green-600 hover:underline text-left block"
+                        title="Abrir WhatsApp"
+                      >
+                        {formatPhone(cliente.telefone)}
+                      </button>
                       {cliente.endereco && (
                         <p className="text-gray-300 text-[10px] truncate max-w-[200px]">{getShortAddress(cliente.endereco)}</p>
                       )}
@@ -409,7 +423,7 @@ export default function DashboardClient() {
                           R$ {cliente.valor.toFixed(2).replace('.', ',')}
                         </span>
                         <button
-                          onClick={() => openWhatsApp(cliente.telefone)}
+                          onClick={() => openWhatsApp(cliente)}
                           className="p-1.5 bg-green-500 hover:bg-green-600 text-white rounded"
                           title="WhatsApp"
                         >
@@ -561,7 +575,7 @@ export default function DashboardClient() {
 
               {/* Botão WhatsApp */}
               <button
-                onClick={() => openWhatsApp(selectedClient.telefone)}
+                onClick={() => openWhatsApp(selectedClient)}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-medium"
               >
                 <MessageCircle className="w-5 h-5" />

@@ -28,6 +28,7 @@ export default async function OrdersPage() {
         total: o?.total ?? 0,
         status: o?.status ?? 'PENDING',
         paymentMethod: o?.paymentMethod ?? '',
+        items: o?.items ?? [],
         createdAt: o?.createdAt?.toISOString?.() ?? '',
       }))}
     />

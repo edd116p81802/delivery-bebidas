@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Trash2, AlertTriangle, Users, Search, Filter, MessageCircle, Eye, ChevronLeft, ChevronRight, X, Phone, Mail, MapPin, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
+import { openCustomerWhatsApp } from '@/lib/whatsapp';
 
 interface Client {
   id: string;
@@ -133,10 +134,17 @@ export default function ClientsPage() {
     return phone;
   };
 
-  const openWhatsApp = (phone: string) => {
-    const cleaned = phone.replace(/\D/g, '');
-    const phoneWithCountry = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
-    window.open(`https://wa.me/${phoneWithCountry}?text=Olá`, '_blank');
+  const openWhatsApp = (clientOrPhone: Client | string) => {
+    if (typeof clientOrPhone === 'string') {
+      openCustomerWhatsApp({ phone: clientOrPhone });
+    } else {
+      openCustomerWhatsApp({
+        phone: clientOrPhone.customerPhone,
+        name: clientOrPhone.customerName,
+        address: clientOrPhone.customerAddress,
+        items: clientOrPhone.items,
+      });
+    }
   };
 
   // Extrai endereço resumido: Estado, Cidade, Bairro
@@ -241,7 +249,13 @@ export default function ClientsPage() {
                     {/* Cliente - Compacto com endereço */}
                     <td className="px-3 py-1.5">
                       <p className="font-semibold text-gray-900 text-sm truncate max-w-[220px]">{c.customerName}</p>
-                      <p className="text-gray-400 text-[11px]">{formatPhone(c.customerPhone)}</p>
+                      <button
+                        onClick={() => openWhatsApp(c)}
+                        className="text-gray-400 text-[11px] hover:text-green-600 hover:underline text-left block"
+                        title="Abrir WhatsApp"
+                      >
+                        {formatPhone(c.customerPhone)}
+                      </button>
                       {c.customerAddress && (
                         <p className="text-gray-300 text-[10px] truncate max-w-[220px]">{getShortAddress(c.customerAddress)}</p>
                       )}
@@ -268,7 +282,7 @@ export default function ClientsPage() {
                           R$ {c.total.toFixed(2).replace('.', ',')}
                         </span>
                         <button
-                          onClick={() => openWhatsApp(c.customerPhone)}
+                          onClick={() => openWhatsApp(c)}
                           className="p-1.5 bg-green-500 hover:bg-green-600 text-white rounded"
                           title="WhatsApp"
                         >
@@ -415,7 +429,7 @@ export default function ClientsPage() {
 
               {/* Botão WhatsApp */}
               <button
-                onClick={() => openWhatsApp(selectedClient.customerPhone)}
+                onClick={() => openWhatsApp(selectedClient)}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-medium"
               >
                 <MessageCircle className="w-5 h-5" />

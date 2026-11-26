@@ -123,7 +123,7 @@ export async function GET() {
         customerEmail: session.customerEmail,
         customerPhone: session.customerPhone,
         customerCpf: orderInfo?.cpf || null,
-        customerAddress: orderInfo?.address || null,
+        customerAddress: orderInfo?.address || session.address || null,
         total: session.total,
         items: session.items,
         tags: tagNames,
